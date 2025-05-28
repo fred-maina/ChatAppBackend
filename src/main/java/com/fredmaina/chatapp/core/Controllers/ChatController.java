@@ -1,7 +1,7 @@
-package com.fredmaina.chatapp.Controllers;
+package com.fredmaina.chatapp.core.Controllers;
 
 
-import com.fredmaina.chatapp.DTOs.Message;
+import com.fredmaina.chatapp.core.DTOs.Message;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.stereotype.Controller;

@@ -1,4 +1,4 @@
-package com.fredmaina.chatapp.DTOs;
+package com.fredmaina.chatapp.core.DTOs;
 
 
 import lombok.Data;
