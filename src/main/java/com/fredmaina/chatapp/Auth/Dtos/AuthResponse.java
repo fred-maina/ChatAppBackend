@@ -1,13 +1,13 @@
 package com.fredmaina.chatapp.Auth.Dtos;
 
 import com.fredmaina.chatapp.Auth.Models.User;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 @Getter
 @Setter
 @NoArgsConstructor
+@Builder
+@ToString
 public class AuthResponse {
     private boolean success;
     private String message;
