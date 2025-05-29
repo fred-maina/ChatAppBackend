@@ -28,7 +28,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
             return User.builder()
                     .disabled(!user.isVerified())
                     .username(user.getEmail())
-                    .password(user.getPassword())
+                    .password(user.getPassword() != null ? user.getPassword() : "DUMMY_PASSWORD")
                     .roles(String.valueOf(user.getRole()))
                     .build();
         }
