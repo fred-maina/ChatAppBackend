@@ -129,13 +129,10 @@ public class AuthService {
             params.add("client_secret", googleOAuthProperties.getClientSecret());
             params.add("redirect_uri", redirectUri);
             params.add("grant_type", "authorization_code");
-
             HttpEntity<MultiValueMap<String, String>> tokenRequest = new HttpEntity<>(params, headers);
-
             ResponseEntity<Map> tokenResponse = restTemplate.postForEntity(
                     "https://oauth2.googleapis.com/token", tokenRequest, Map.class
             );
-
             assert tokenResponse.getBody() != null;
             String idToken = (String) tokenResponse.getBody().get("id_token");
 
@@ -178,6 +175,26 @@ public class AuthService {
                     .message("OAuth failed: " + e.getMessage())
                     .build();
         }
+    }
+
+    public AuthResponse setUsername(String email,String username){
+        Optional<User> existingUser = userRepository.findByEmail(email);
+        if (existingUser.isPresent()) {
+            User user = existingUser.get();
+            user.setUsername(username);
+            userRepository.save(user);
+            return  AuthResponse.builder()
+                    .success(true)
+                    .user(user)
+                    .message("Username set successful")
+                    .build();
+
+        }
+        return AuthResponse.builder()
+                .message("Invalid email")
+                .success(false)
+                .build();
+
     }
 
 }
