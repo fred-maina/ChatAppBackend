@@ -87,41 +87,37 @@ This project serves as a strong foundation for a customer support chat, an anony
 
 ---
 
-## Project Structure
-
-The project follows a standard Spring Boot application structure:
-
+<details> <summary><strong>📁 Project Structure</strong></summary>
 
 chatapp/
 ├── src/
 │   ├── main/
 │   │   ├── java/
 │   │   │   └── com/fredmaina/chatapp/
-│   │   │       ├── ChatappApplication.java  # Main application entry point
-│   │   │       ├── Auth/                    # Authentication module
-│   │   │       │   ├── configs/             # Security, JWT, OAuth configs
-│   │   │       │   ├── controllers/         # Auth REST controllers
-│   │   │       │   ├── Dtos/                # Data Transfer Objects for auth
-│   │   │       │   ├── Models/              # User, Role entities
-│   │   │       │   ├── Repositories/        # JPA repositories for auth
-│   │   │       │   └── services/            # Auth business logic
-│   │   │       └── core/                    # Core chat functionality
-│   │   │           ├── config/              # WebSocket, Jackson configs
-│   │   │           ├── Controllers/         # Chat REST & WebSocket controllers
-│   │   │           ├── DTOs/                # DTOs for chat messages, sessions
-│   │   │           ├── models/              # ChatMessage entity
-│   │   │           ├── Repositories/        # JPA repositories for chat
-│   │   │           └── Services/            # Chat business logic
-│   │   └── resources/
-│   │       ├── application.properties     # Application configuration
-│   │       ├── db/migration/              # Flyway SQL migration scripts
-│   │       └── static/
-│   │           └── indes.html             # Basic HTML for WebSocket testing
-│   └── test/
-│       └── java/
-└── pom.xml 
-
-
+│   │   │       ├── ChatappApplication.java      # Main application entry point
+│   │   │       ├── Auth/                        # Authentication module
+│   │   │       │   ├── configs/                 # Security, JWT, OAuth configs
+│   │   │       │   ├── controllers/             # Auth REST controllers
+│   │   │       │   ├── Dtos/                    # Data Transfer Objects for auth
+│   │   │       │   ├── Models/                  # User, Role entities
+│   │   │       │   ├── Repositories/            # JPA repositories for auth
+│   │   │       │   └── services/                # Auth business logic
+│   │   │       └── core/                        # Core chat functionality
+│   │   │           ├── config/                  # WebSocket, Jackson configs
+│   │   │           ├── Controllers/             # Chat REST & WebSocket controllers
+│   │   │           ├── DTOs/                    # DTOs for chat messages, sessions
+│   │   │           ├── models/                  # ChatMessage entity
+│   │   │           ├── Repositories/            # JPA repositories for chat
+│   │   │           └── Services/                # Chat business logic
+│   ├── resources/
+│   │   ├── application.properties               # Application configuration
+│   │   ├── db/migration/                        # Flyway SQL migration scripts
+│   │   └── static/
+│   │       └── index.html                       # Basic HTML for WebSocket testing
+├── test/
+│   └── java/
+└── pom.xml
+</details>
 ---
 
 ## Prerequisites
