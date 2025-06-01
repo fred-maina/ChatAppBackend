@@ -9,12 +9,10 @@ import com.fredmaina.chatapp.Auth.Models.Role;
 import com.fredmaina.chatapp.Auth.Models.User;
 import com.fredmaina.chatapp.Auth.Repositories.UserRepository;
 import com.fredmaina.chatapp.Auth.configs.GoogleOAuthProperties;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
@@ -26,6 +24,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @Service
+@Slf4j
 public class AuthService {
     @Autowired
     UserRepository userRepository;
@@ -123,23 +122,50 @@ public class AuthService {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
+            // Prepare form parameters
             MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
             params.add("code", code);
             params.add("client_id", googleOAuthProperties.getClientId());
             params.add("client_secret", googleOAuthProperties.getClientSecret());
             params.add("redirect_uri", redirectUri);
             params.add("grant_type", "authorization_code");
-            HttpEntity<MultiValueMap<String, String>> tokenRequest = new HttpEntity<>(params, headers);
-            ResponseEntity<Map> tokenResponse = restTemplate.postForEntity(
-                    "https://oauth2.googleapis.com/token", tokenRequest, Map.class
-            );
-            assert tokenResponse.getBody() != null;
-            String idToken = (String) tokenResponse.getBody().get("id_token");
 
-            // Step 2: Validate id_token using Google's tokeninfo endpoint
-            ResponseEntity<Map> tokenInfo = restTemplate.getForEntity(
-                    "https://oauth2.googleapis.com/tokeninfo?id_token=" + idToken, Map.class
-            );
+            log.info("Sending token request with params: {}", params);
+
+            // Build the request
+            HttpEntity<MultiValueMap<String, String>> tokenRequest = new HttpEntity<>(params, headers);
+
+            // Step 1: Request access token
+            ResponseEntity<Map> tokenResponse = restTemplate.postForEntity(
+                    "https://oauth2.googleapis.com/token", tokenRequest, Map.class);
+
+            log.info("Token response status: {}", tokenResponse.getStatusCode());
+            log.debug("Token response body: {}", tokenResponse.getBody());
+
+            if (tokenResponse.getStatusCode() != HttpStatus.OK || tokenResponse.getBody() == null) {
+                log.error("Failed to retrieve token: HTTP {} - Body: {}", tokenResponse.getStatusCode(), tokenResponse.getBody());
+                return new AuthResponse(false, "OAuth failed: Invalid token response", null, null);
+            }
+
+            String idToken = (String) tokenResponse.getBody().get("id_token");
+            if (idToken == null) {
+                log.error("No id_token found in token response");
+                return new AuthResponse(false, "OAuth failed: Missing id_token", null, null);
+            }
+
+            // Step 2: Validate id_token
+            String tokenInfoUrl = "https://oauth2.googleapis.com/tokeninfo?id_token=" + idToken;
+            log.info("Validating id_token via: {}", tokenInfoUrl);
+
+            ResponseEntity<Map> tokenInfo = restTemplate.getForEntity(tokenInfoUrl, Map.class);
+
+            log.info("Token info response status: {}", tokenInfo.getStatusCode());
+            log.debug("Token info response body: {}", tokenInfo.getBody());
+
+            if (tokenInfo.getStatusCode() != HttpStatus.OK || tokenInfo.getBody() == null) {
+                log.error("Token info validation failed: HTTP {} - Body: {}", tokenInfo.getStatusCode(), tokenInfo.getBody());
+                return new AuthResponse(false, "OAuth failed: Invalid token info", null, null);
+            }
 
             Map body = tokenInfo.getBody();
 
