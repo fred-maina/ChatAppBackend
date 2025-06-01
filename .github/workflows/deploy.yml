@@ -1,61 +1,42 @@
-name: CI/CD to EC2 Kubernetes
+name: Build and Deploy to K8s
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout repo
+      - name: Checkout source code
         uses: actions/checkout@v3
 
       - name: Set up Java 21
         uses: actions/setup-java@v3
         with:
           java-version: '21'
-          distribution: ''
+          distribution: 'temurin'
 
-      - name: Build Spring Boot Jar
+      - name: Build Spring Boot app (skip tests)
         run: ./mvnw clean package -DskipTests
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
       - name: Build and push Docker image
         run: |
-          docker build -t ${{secrets.DOCKER_USERNAME}}/chatapp:latest .
-          docker push ${{secrets.DOCKER_USERNAME}}/chatapp:latest
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/chatapp:latest .
+          docker push ${{ secrets.DOCKER_USERNAME }}/chatapp:latest
 
-      - name: Deploy to Kubernetes on EC2
-        uses: appleboy/ssh-action@v0.1.7
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ubuntu
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            # Set Kubernetes namespace (create if doesn't exist)
-            kubectl get namespace chatapp || kubectl create namespace chatapp
-            
-            # Delete old secret if exists
-            kubectl -n chatapp delete secret chatapp-secrets --ignore-not-found=true
-            
-            # Create new secret from env vars (replace with your actual secrets)
-            kubectl -n chatapp create secret generic chatapp-secrets \
-              --from-literal=SPRING_DATASOURCE_URL="${{ secrets.SPRING_DATASOURCE_URL }}" \
-              --from-literal=SPRING_DATASOURCE_USERNAME="${{ secrets.SPRING_DATASOURCE_USERNAME }}" \
-              --from-literal=SPRING_DATASOURCE_PASSWORD="${{ secrets.SPRING_DATASOURCE_PASSWORD }}" \
-              --from-literal=JWT_SECRET="${{ secrets.JWT_SECRET }}" \
-              --from-literal=GOOGLE_CLIENT-ID="${{ secrets.GOOGLE_CLIENT_ID }}" \
-              --from-literal=GOOGLE_SECRET-ID="${{ secrets.GOOGLE_SECRET_ID }}" \
-              --from-literal=GOOGLE_REDIRECT_URI="${{ secrets.GOOGLE_REDIRECT_URI }}"
-            
-            # Apply k8s manifests (deployment, service, ingress)
-            kubectl -n chatapp apply -f /home/ubuntu/chatapp/k8s/
-            
-            # Optional: rollout restart deployment to force pods reload new image and secrets
-            kubectl -n chatapp rollout restart deployment/chatapp
+      - name: Set up kubectl
+        run: |
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 --decode > kubeconfig
+          export KUBECONFIG=$PWD/kubeconfig
+          kubectl config get-contexts
+
+      - name: Deploy to Kubernetes
+        run: |
+          export KUBECONFIG=$PWD/kubeconfig
+          kubectl apply -f k8s/
