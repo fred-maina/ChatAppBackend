@@ -1,7 +1,6 @@
 # ChatApp - Real-time Messaging Application
 
-<p align="center">
-  </p>
+
 
 
 
