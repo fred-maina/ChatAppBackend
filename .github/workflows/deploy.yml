@@ -1,4 +1,4 @@
-name: Build and Deploy to K8s
+name: Build and Deploy to GKE
 
 on:
   push:
@@ -6,11 +6,11 @@ on:
       - main
 
 jobs:
-  build-and-deploy:
+  build-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source code
+      - name: Checkout code
         uses: actions/checkout@v3
 
       - name: Set up Java 21
@@ -19,24 +19,32 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: Build Spring Boot app (skip tests)
+      - name: Build Spring Boot App (skip tests)
         run: ./mvnw clean package -DskipTests
 
-      - name: Log in to Docker Hub
+      - name: Docker Login
         run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
-      - name: Build and push Docker image
+      - name: Build and Push Docker Image
         run: |
           docker build -t ${{ secrets.DOCKER_USERNAME }}/chatapp:latest .
           docker push ${{ secrets.DOCKER_USERNAME }}/chatapp:latest
 
-      - name: Set up kubectl
-        run: |
-          echo "${{ secrets.KUBE_CONFIG }}" | base64 --decode > kubeconfig
-          export KUBECONFIG=$PWD/kubeconfig
-          kubectl config get-contexts
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
-      - name: Deploy to Kubernetes
+      - name: Set up gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Configure kubectl
         run: |
-          export KUBECONFIG=$PWD/kubeconfig
-          kubectl apply -f k8s/
+          gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER_NAME }} \
+            --zone ${{ secrets.GKE_CLUSTER_ZONE }} \
+            --project ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Deploy to GKE
+        run: kubectl apply -f k8s/
