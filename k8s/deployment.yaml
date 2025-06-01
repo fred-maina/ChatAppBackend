@@ -19,6 +19,13 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "512Mi"
+            limits:
+              cpu: "500m"
+              memory: "1Gi"
           env:
             - name: SPRING_DATASOURCE_URL
               valueFrom:
@@ -55,14 +62,12 @@ spec:
                 secretKeyRef:
                   name: chatapp-secrets
                   key: GOOGLE_REDIRECT_URI
-
           livenessProbe:
             httpGet:
               path: /actuator/health
               port: 8080
             initialDelaySeconds: 15
             periodSeconds: 10
-
           readinessProbe:
             httpGet:
               path: /actuator/health
