@@ -52,10 +52,9 @@ jobs:
             --zone ${{ secrets.GKE_CLUSTER_ZONE }} \
             --project ${{ secrets.GCP_PROJECT_ID }}
 
-      - name: Install gke-gcloud-auth-plugin
+      - name: Install gke-gcloud-auth-plugin via gcloud CLI
         run: |
-          sudo apt-get update
-          sudo apt-get install -y google-cloud-sdk-gke-gcloud-auth-plugin
+          gcloud components install gke-gcloud-auth-plugin
 
       - name: Deploy to Kubernetes
         run: |
