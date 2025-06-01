@@ -5,13 +5,13 @@ metadata:
   namespace: chatapp
   annotations:
     kubernetes.io/ingress.class: "nginx"
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"  # if you use cert-manager for HTTPS certs
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
     nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   tls:
     - hosts:
-        - api.chat.fredmaina.com
-      secretName: chatapp-tls  # This secret will store your TLS cert and key
+        - chat.fredmaina.com
+      secretName: chatapp-tls
   rules:
     - host: chat.fredmaina.com
       http:
