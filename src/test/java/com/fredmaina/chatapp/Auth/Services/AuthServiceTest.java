@@ -53,7 +53,7 @@ class AuthServiceTest {
         AuthResponse response = authService.signUp(request);
 
         assertTrue(response.isSuccess());
-        assertEquals("User registered successfully", response.getMessage());
+        assertEquals("User registered and logged in successfully", response.getMessage());
         assertNotNull(response.getUser());
         assertEquals("fredmaina123", response.getUser().getUsername());
         assertEquals("encodedPassword", response.getUser().getPassword());
