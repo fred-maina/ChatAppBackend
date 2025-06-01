@@ -4,7 +4,7 @@ metadata:
   name: chatapp
   namespace: chatapp
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: chatapp
@@ -72,5 +72,6 @@ spec:
             httpGet:
               path: /actuator/health
               port: 8080
-            initialDelaySeconds: 5
+            initialDelaySeconds: 45
+            failureThreshold: 3
             periodSeconds: 10
