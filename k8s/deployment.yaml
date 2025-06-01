@@ -62,19 +62,19 @@ spec:
                 secretKeyRef:
                   name: chatapp-secrets
                   key: GOOGLE_REDIRECT_URI
-          livenessProbe:
-            httpGet:
-              path: /actuator/health
-              port: 8080
-            initialDelaySeconds: 120
-            failureThreshold: 3
-            timeoutSeconds: 5
-            periodSeconds: 30
+#          livenessProbe:
+#            httpGet:
+#              path: /actuator/health
+#              port: 8080
+#            initialDelaySeconds: 120
+#            failureThreshold: 3
+#            timeoutSeconds: 5
+#            periodSeconds: 30
           readinessProbe:
             httpGet:
               path: /actuator/health
               port: 8080
-            initialDelaySeconds: 120
+            initialDelaySeconds: 30
             timeoutSeconds: 5
-            failureThreshold: 3
-            periodSeconds: 10
+            failureThreshold: 5
+            periodSeconds: 30
