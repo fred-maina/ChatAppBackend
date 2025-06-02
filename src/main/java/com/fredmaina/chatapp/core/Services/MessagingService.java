@@ -8,6 +8,7 @@ import com.fredmaina.chatapp.core.DTOs.WebSocketMessagePayload;
 import com.fredmaina.chatapp.core.Repositories.ChatMessageRepository;
 import com.fredmaina.chatapp.core.models.ChatMessage;
 import jakarta.annotation.PostConstruct;
+import jakarta.transaction.Transactional;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -117,6 +118,8 @@ public class MessagingService {
         }
     }
 
+
+    @Transactional
     public void setMessageAsRead(String sessionId) {
         log.info("Setting messages as read {}", sessionId);
         chatMessageRepository.markMessagesAsRead(sessionId);
