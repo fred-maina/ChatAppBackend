@@ -35,12 +35,9 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, UUID> 
             "WHERE m.toUser.id = :userId AND m.fromSessionId IS NOT NULL")
     List<String> findDistinctSessionsByToUserId(@Param("userId") UUID userId);
 
-    // LEGACY/SPECIFIC: findByFromSessionIdAndToUserIdOrderByTimestampAsc - Retained if used elsewhere,
-    // but getUserChatSessions will use a more comprehensive query.
-    List<ChatMessage> findByFromSessionIdAndToUserIdOrderByTimestampAsc(String sessionId, UUID userId);
 
-    // Fetches messages between a specific user and an anonymous session ID (bidirectional)
-    // This is crucial for getting the correct last message and for building ChatSessionDto
+
+
     @Query("SELECT m FROM ChatMessage m " +
             "WHERE (m.fromSessionId = :sessionId AND m.toUser.id = :userId) " +        // Anon to User
             "   OR (m.toSessionId = :sessionId AND m.fromUser.id = :userId) " +      // User to Anon
@@ -59,12 +56,13 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, UUID> 
             "WHERE m.toUser.id = :userId AND m.fromSessionId = :fromSessionId AND m.isRead = false")
     void markMessagesAsRead(@Param("userId") UUID userId, @Param("fromSessionId") String fromSessionId);
 
-    // Deletes messages sent FROM an anonymous session TO a specific user.
+    @Modifying
+    @Query("UPDATE ChatMessage m SET m.isRead =true " +
+    "WHERE m.fromSessionId=:sessionId AND m.isRead=false")
+    void markMessagesAsRead(String sessionId);
+
     void deleteByFromSessionIdAndToUserId(String fromSessionId, UUID toUserId);
 
-    // Deletes messages sent FROM a specific user TO an anonymous session.
     void deleteByToSessionIdAndFromUserId(String toSessionId, UUID fromUserId);
 
-    // Used by /api/chat/session_history (Original version from prompt, ensure correct usage)
-    List<ChatMessage> findByFromSessionIdAndToUser(String fromSessionId, User toUser);
 }
