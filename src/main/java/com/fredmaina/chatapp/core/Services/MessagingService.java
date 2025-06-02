@@ -116,4 +116,9 @@ public class MessagingService {
             }
         }
     }
+
+    public void setMessageAsRead(String sessionId) {
+        log.info("Setting messages as read {}", sessionId);
+        chatMessageRepository.markMessagesAsRead(sessionId);
+    }
 }
