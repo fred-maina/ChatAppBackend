@@ -21,6 +21,9 @@ public class WebSocketMessagePayload {
     private String content;
     private String nickname;
     private String timestamp;
+    private String ChatId;
 
 
+    public WebSocketMessagePayload(MessageType messageType, String sessionId, String username, String content, String nickname, String string) {
+    }
 }
