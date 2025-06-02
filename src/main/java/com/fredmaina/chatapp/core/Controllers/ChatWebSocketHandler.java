@@ -84,6 +84,10 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                     messagingService.sendMessageFromUser(username, payload.getTo(), payload.getContent());
                 }
             }
+            case MARK_AS_READ -> {
+                messagingService.setMessageAsRead(payload.getChatId());
+                log.info(payload.toString());
+            }
             default -> log.warn("Unsupported message type: {}", payload.getType());
         }
     }
