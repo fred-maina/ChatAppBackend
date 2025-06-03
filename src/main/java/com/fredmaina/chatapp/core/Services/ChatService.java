@@ -51,7 +51,7 @@ public class ChatService {
                         .id(sessionId)
                         .senderNickname(senderNickname)
                         .lastMessage(lastMsg.getContent())
-                        .lastMessageTimestamp(lastMsg.getTimestamp()) // This is LocalDateTime
+                        .lastMessageTimestamp(lastMsg.getTimestamp()) // This will now be Instant
                         .unreadCount((int) unreadCount)
                         .avatarUrl("https://i.pravatar.cc/150?u=" + sessionId) // Placeholder
                         .messages(
