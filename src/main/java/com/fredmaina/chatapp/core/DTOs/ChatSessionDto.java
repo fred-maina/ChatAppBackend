@@ -4,7 +4,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
+import java.time.Instant; // Changed from LocalDateTime
 import java.util.List;
 
 @Builder
@@ -14,7 +14,7 @@ public class ChatSessionDto {
     private String id;
     private String senderNickname;
     private String lastMessage;
-    private LocalDateTime lastMessageTimestamp;
+    private Instant lastMessageTimestamp; // Changed to Instant
     private int unreadCount;
     private String avatarUrl;
     private List<ChatMessageDto> messages;
