@@ -17,7 +17,8 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
+import java.time.Instant; // Changed from LocalDateTime
+import java.time.format.DateTimeFormatter; // Import DateTimeFormatter
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -54,7 +55,7 @@ public class MessagingService {
                 .fromSessionId(sessionId)
                 .nickname(dto.getNickname())
                 .toUser(toUser)
-                .timestamp(LocalDateTime.now())
+                .timestamp(Instant.now()) // Use Instant.now()
                 .build();
 
         chatMessageRepository.save(message);
@@ -71,7 +72,7 @@ public class MessagingService {
                         toUser.getUsername(),
                         dto.getContent(),
                         dto.getNickname(),
-                        LocalDateTime.now().toString()
+                        DateTimeFormatter.ISO_INSTANT.format(Instant.now()) // Format Instant for payload
                 );
                 receiverSession.sendMessage(new TextMessage(objectMapper.writeValueAsString(payload)));
             } catch (IOException e) {
@@ -95,7 +96,7 @@ public class MessagingService {
                         targetSessionId,
                         content,
                         null,
-                        LocalDateTime.now().toString()
+                        DateTimeFormatter.ISO_INSTANT.format(Instant.now()) // Format Instant for payload
                 );
 
                 session.sendMessage(new TextMessage(objectMapper.writeValueAsString(payload)));
@@ -106,7 +107,7 @@ public class MessagingService {
                         .fromUser(userRepository.findByUsernameOrEmail(username,username)
                                 .orElseThrow(() -> new RuntimeException("User not found")))
                         .toSessionId(targetSessionId)
-                        .timestamp(LocalDateTime.now())
+                        .timestamp(Instant.now()) // Use Instant.now()
                         .build();
 
                 chatMessageRepository.save(message);
