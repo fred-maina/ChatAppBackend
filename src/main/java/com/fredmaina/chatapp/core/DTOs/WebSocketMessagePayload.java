@@ -24,6 +24,12 @@ public class WebSocketMessagePayload {
     private String ChatId;
 
 
-    public WebSocketMessagePayload(MessageType messageType, String sessionId, String username, String content, String nickname, String string) {
+    public WebSocketMessagePayload(MessageType type, String from, String to, String content, String nickname, String timestamp) {
+        this.type = type;
+        this.from = from;
+        this.to = to;
+        this.content = content;
+        this.nickname = nickname;
+        this.timestamp = timestamp;
     }
 }
