@@ -4,7 +4,7 @@ import com.fredmaina.chatapp.Auth.Models.User;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant; // Changed from LocalDateTime
 import java.util.UUID;
 
 @Entity
@@ -28,7 +28,7 @@ public class ChatMessage {
 
     private String nickname;       // optional: only needed if from anonymous
 
-    private LocalDateTime timestamp;
+    private Instant timestamp; // Changed to Instant
 
     @ManyToOne
     @JoinColumn(name = "from_user_id")
