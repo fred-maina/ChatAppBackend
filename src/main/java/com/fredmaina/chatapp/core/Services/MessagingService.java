@@ -80,12 +80,21 @@ public class MessagingService {
             }
         }
     }
-
     public void sendMessageFromUser(String username, String targetSessionId, String content) {
         if (content == null || content.isBlank()) {
             log.warn("Empty message from user {}", username);
             return;
         }
+        ChatMessage message = ChatMessage.builder()
+                .content(content)
+                .fromUser(userRepository.findByUsernameOrEmail(username, username)
+                        .orElseThrow(() -> new RuntimeException("User not found")))
+                .toSessionId(targetSessionId)
+                .timestamp(Instant.now())
+                .build();
+
+        chatMessageRepository.save(message);
+        log.info("Saved message from user {} to anon session {}", username, targetSessionId);
 
         WebSocketSession session = anonymousSessions.get(targetSessionId);
         if (session != null && session.isOpen()) {
@@ -96,23 +105,11 @@ public class MessagingService {
                         targetSessionId,
                         content,
                         null,
-                        DateTimeFormatter.ISO_INSTANT.format(Instant.now()) // Format Instant for payload
+                        DateTimeFormatter.ISO_INSTANT.format(message.getTimestamp())
                 );
 
                 session.sendMessage(new TextMessage(objectMapper.writeValueAsString(payload)));
-                log.info("Looking up user with username: {}", username);
-
-                ChatMessage message = ChatMessage.builder()
-                        .content(content)
-                        .fromUser(userRepository.findByUsernameOrEmail(username,username)
-                                .orElseThrow(() -> new RuntimeException("User not found")))
-                        .toSessionId(targetSessionId)
-                        .timestamp(Instant.now()) // Use Instant.now()
-                        .build();
-
                 chatMessageRepository.save(message);
-                log.info("User {} sent message to anon session {}", username, targetSessionId);
-
             } catch (IOException e) {
                 log.error("Error sending message from {} to anon {}: {}", username, targetSessionId, e.getMessage());
             }
