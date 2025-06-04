@@ -55,6 +55,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         List<String> cookies = session.getHandshakeHeaders().get("cookie");
         if (cookies != null) {
             for (String header : cookies) {
+                log.info(header);
                 String[] parts = header.split(";");
                 for (String part : parts) {
                     String[] keyValue = part.trim().split("=");
