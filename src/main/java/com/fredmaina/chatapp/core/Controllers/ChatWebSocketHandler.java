@@ -52,8 +52,19 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             } catch (Exception ignored) {}
             return;
         }
+        List<String> cookies = session.getHandshakeHeaders().get("cookie");
+        if (cookies != null) {
+            for (String header : cookies) {
+                String[] parts = header.split(";");
+                for (String part : parts) {
+                    String[] keyValue = part.trim().split("=");
+                    if (keyValue.length == 2 && keyValue[0].equals("anonSessionId")) {
+                        log.info("extracted from cookies");
+                    }
+                }
+            }
+        }
 
-        // Sync session maps to the messaging service
         messagingService.getUserSessions().putAll(userSessions);
         messagingService.getAnonymousSessions().putAll(anonymousSessions);
     }
