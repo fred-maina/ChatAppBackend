@@ -90,10 +90,7 @@ public class ChatService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found for deletion: " + userId));
 
-        // Delete messages from anonymous user to the authenticated user
         chatMessageRepository.deleteByFromSessionIdAndToUserId(anonSessionId, userId);
-
-        // Delete messages from the authenticated user to the anonymous session
         chatMessageRepository.deleteByToSessionIdAndFromUserId(anonSessionId, userId);
     }
 }
