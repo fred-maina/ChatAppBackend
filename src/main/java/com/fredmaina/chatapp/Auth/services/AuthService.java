@@ -40,8 +40,24 @@ public class AuthService {
 
     public AuthResponse signUp(SignUpRequest request) {
         AuthResponse authResponse = new AuthResponse();
+
+        // Case-insensitive check for username
+        if (request.getUsername() != null && userRepository.findByUsernameIgnoreCase(request.getUsername()).isPresent()) {
+            authResponse.setMessage("Username already exists (case-insensitive)");
+            authResponse.setSuccess(false);
+            return authResponse;
+        }
+
+        // Check for existing email (which is already case-sensitive by default in most DBs or handled by your existing logic)
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            authResponse.setMessage("Email already exists");
+            authResponse.setSuccess(false);
+            return authResponse;
+        }
+
+
         User user = new User();
-        user.setUsername(request.getUsername());
+        user.setUsername(request.getUsername()); // Store the original case
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setEmail(request.getEmail());
         user.setFirstName(request.getFirstName());
@@ -59,15 +75,19 @@ public class AuthService {
             authResponse.setUser(user);
             authResponse.setToken(token);
         } catch (DataIntegrityViolationException e) {
-            if (e.getMessage().contains("users_email_key")) {
+            // This catch block might still be useful for other constraints,
+            // but the primary username and email checks are now done above.
+            if (e.getMessage().contains("users_email_key")) { // Should ideally be caught by the check above
                 authResponse.setMessage("Email already exists");
-            } else if (e.getMessage().contains("idx_user_username") || e.getMessage().contains("users_username_key")) {
+            } else if (e.getMessage().contains("idx_user_username") || e.getMessage().contains("users_username_key")) { // Should ideally be caught by the check above
                 authResponse.setMessage("Username already exists");
             } else {
+                log.error("Data integrity violation during sign up: {}", e.getMessage());
                 authResponse.setMessage("Data integrity violation");
             }
             authResponse.setSuccess(false);
         } catch (Exception e) {
+            log.error("Unexpected error during sign up: {}", e.getMessage(), e);
             authResponse.setMessage("Unexpected error occurred");
             authResponse.setSuccess(false);
         }
@@ -87,13 +107,14 @@ public class AuthService {
 
         User user = null;
 
-        // Try email lookup first (most reliable, especially with Google OAuth users)
+        // Try email lookup first
         Optional<User> byEmail = userRepository.findByEmail(input);
         if (byEmail.isPresent()) {
             user = byEmail.get();
         } else {
-            // Then try username lookup, but skip if the input equals "null"
-            Optional<User> byUsername = userRepository.findByUsername(input);
+            // Then try username lookup (case-insensitive for login flexibility, if desired)
+            // If you want case-sensitive login for username, use userRepository.findByUsername(input)
+            Optional<User> byUsername = userRepository.findByUsernameIgnoreCase(input);
             if (byUsername.isPresent()) {
                 user = byUsername.get();
             }
@@ -183,6 +204,9 @@ public class AuthService {
                 newUser.setLastName(lastName);
                 newUser.setVerified(true);
                 newUser.setRole(Role.USER);
+                // For Google OAuth users, username can be initially null or set to a default
+                // or prompt them to set it later.
+                // newUser.setUsername(null); // Or some generated unique value if needed immediately
                 return userRepository.save(newUser);
             });
 
@@ -196,6 +220,7 @@ public class AuthService {
                     .build();
 
         } catch (Exception e) {
+            log.error("OAuth failed: {}", e.getMessage(), e);
             return AuthResponse.builder()
                     .success(false)
                     .message("OAuth failed: " + e.getMessage())
@@ -203,24 +228,39 @@ public class AuthService {
         }
     }
 
-    public AuthResponse setUsername(String email,String username){
-        Optional<User> existingUser = userRepository.findByEmail(email);
-        if (existingUser.isPresent()) {
-            User user = existingUser.get();
-            user.setUsername(username);
-            userRepository.save(user);
-            return  AuthResponse.builder()
-                    .success(true)
-                    .user(user)
-                    .message("Username set successful")
+    public AuthResponse setUsername(String email, String username) {
+        // Check if the desired username (case-insensitive) is already taken by another user
+        Optional<User> userByUsername = userRepository.findByUsernameIgnoreCase(username);
+        if (userByUsername.isPresent() && !userByUsername.get().getEmail().equalsIgnoreCase(email)) {
+            return AuthResponse.builder()
+                    .message("Username already taken (case-insensitive)")
+                    .success(false)
                     .build();
+        }
 
+        Optional<User> existingUserByEmail = userRepository.findByEmail(email);
+        if (existingUserByEmail.isPresent()) {
+            User user = existingUserByEmail.get();
+            user.setUsername(username); // Store with original casing
+            try {
+                userRepository.save(user);
+                return AuthResponse.builder()
+                        .success(true)
+                        .user(user)
+                        .message("Username set successfully")
+                        .build();
+            } catch (DataIntegrityViolationException e) {
+
+                log.error("Data integrity violation while setting username for email {}: {}", email, e.getMessage());
+                return AuthResponse.builder()
+                        .message("Username already taken or another data issue occurred.")
+                        .success(false)
+                        .build();
+            }
         }
         return AuthResponse.builder()
-                .message("Invalid email")
+                .message("Invalid email, user not found.")
                 .success(false)
                 .build();
-
     }
-
 }
