@@ -62,7 +62,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         userSessions.values().remove(session);
         anonymousSessions.values().remove(session);
-        log.info("Connection closed: {}", session.getId());
+        log.info("Connection closed: {}, reason: {}", session.getId(),status.getReason());
     }
 
     @Override
