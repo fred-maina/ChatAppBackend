@@ -34,7 +34,8 @@ public class AuthController {
         if(authResponse.isSuccess()){
             return ResponseEntity.ok(authResponse);
         }
-        return ResponseEntity.status(401).body(authResponse);
+        // It's better to return a more specific status code for login failure, e.g., 401 Unauthorized
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(authResponse);
 
     }
 
@@ -42,17 +43,24 @@ public class AuthController {
     public ResponseEntity<AuthResponse> register(@RequestBody SignUpRequest signUpRequest) {
         AuthResponse authResponse = authService.signUp(signUpRequest);
         if(authResponse.isSuccess()){
-            return ResponseEntity.ok(authResponse);
+            // For successful registration, 201 Created is often more appropriate than 200 OK
+            return ResponseEntity.status(HttpStatus.CREATED).body(authResponse);
         }
-        return ResponseEntity.status(500).body(authResponse);
+        // For failures like "username/email exists", 409 Conflict or 400 Bad Request might be better than 500
+        if ("Username already exists (case-insensitive)".equals(authResponse.getMessage()) || "Email already exists".equals(authResponse.getMessage())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(authResponse);
+        }
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(authResponse); // General bad request for other issues
     }
     @PostMapping("/oauth/google")
     public ResponseEntity<?> googleOAuth(@RequestBody GoogleOAuthRequest request) {
         AuthResponse response = authService.handleGoogleOAuth(request.getCode(), request.getRedirectUri());
-        log.error(response.toString());
+        // log.error(response.toString()); // log.info or log.debug might be more appropriate for successful responses
         if (response.isSuccess()) {
+            log.info("Google OAuth successful for user: {}", response.getUser() != null ? response.getUser().getEmail() : "Unknown");
             return ResponseEntity.ok(response);
         } else {
+            log.warn("Google OAuth failed: {}", response.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
         }
     }
@@ -60,13 +68,18 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<AuthResponse> me(@RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
-        String email = jwtService.getUsernameFromToken(token);
-        User user = userRepository.findByEmail(email).orElseThrow();
+        String email = jwtService.getUsernameFromToken(token); // This actually gets the email (subject of token)
+        User user = userRepository.findByEmail(email).orElse(null);
+
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(AuthResponse.builder().success(false).message("User not found for provided token.").build());
+        }
 
         return ResponseEntity.ok(
                 AuthResponse.builder()
                         .success(true)
-                        .token(token)
+                        .token(token) // Consider if sending the token back is necessary here
                         .user(user)
                         .build());
     }
@@ -74,20 +87,30 @@ public class AuthController {
     public ResponseEntity<AuthResponse> setUsername(@RequestBody Map<String,String> map) {
         String email = map.get("email");
         String username = map.get("username");
+
+        if (email == null || email.isBlank() || username == null || username.isBlank()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(AuthResponse.builder().success(false).message("Email and username are required.").build());
+        }
+
         AuthResponse authResponse = authService.setUsername(email,username);
         if(authResponse.isSuccess()){
             return ResponseEntity.ok(authResponse);
         }
-        return ResponseEntity.status(404).body(authResponse);
+        // Distinguish between user not found and username taken
+        if ("Username already taken (case-insensitive)".equals(authResponse.getMessage())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(authResponse);
+        }
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(authResponse); // Assuming "Invalid email" means user not found
 
     }
 
     @GetMapping("/check-username/{username}")
     public ResponseEntity<Map<String, Object>> checkUsername(@PathVariable String username) {
         try {
-            boolean exists = userRepository.existsByUsername(username);
+            // Use the case-insensitive check
+            boolean exists = userRepository.existsByUsernameIgnoreCase(username);
             if (exists) {
-
                 return ResponseEntity.ok(Map.of(
                         "success", true,
                         "exists", true,
