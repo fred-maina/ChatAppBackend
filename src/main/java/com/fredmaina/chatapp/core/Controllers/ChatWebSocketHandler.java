@@ -123,6 +123,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                     for (String part : parts) {
                         String[] keyValue = part.trim().split("=");
                         if (keyValue.length == 2 && keyValue[0].equals("anonSessionId")) {
+                            log.info("extracted form cookies");
                             return keyValue[1];
                         }
                     }
@@ -135,6 +136,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                 for (String param : queryParams) {
                     String[] keyValue = param.split("=");
                     if (keyValue.length == 2 && keyValue[0].equals("anonSessionId")) {
+                        log.info("extracted from  URI");
                         return keyValue[1];
                     }
                 }
