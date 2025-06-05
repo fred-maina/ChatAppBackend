@@ -86,11 +86,11 @@ spec:
 #            failureThreshold: 3
 #            timeoutSeconds: 5
 #            periodSeconds: 30
-          readinessProbe:
-            httpGet:
-              path: /actuator/health
-              port: 8080
-            initialDelaySeconds: 30
-            timeoutSeconds: 10
-            failureThreshold: 5
-            periodSeconds: 30
+#          readinessProbe:
+#            httpGet:
+#              path: /actuator/health
+#              port: 8080
+#            initialDelaySeconds: 30
+#            timeoutSeconds: 10
+#            failureThreshold: 5
+#            periodSeconds: 30
