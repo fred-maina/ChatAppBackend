@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: chatapp
-          image: fredmaina/chatapp
+          image: fredmaina/chatapp:${IMAGE_TAG}
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
