@@ -62,7 +62,7 @@ jobs:
       - name: Replace image tag in deployment template
         run: |
           mkdir -p k8s/generated
-          IMAGE_TAG=${IMAGE_TAG} envsubst < k8s/chatapp-deployment.yaml.template > k8s/generated/chatapp-deployment.yaml
+          IMAGE_TAG=${IMAGE_TAG} envsubst < k8s/deployment.yaml > k8s/generated/chatapp-deployment.yaml
 
       - name: Apply Kubernetes manifests
         run: |
