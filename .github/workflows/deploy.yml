@@ -58,7 +58,8 @@ jobs:
       - name: Install gke-gcloud-auth-plugin via gcloud CLI
         run: |
           gcloud components install gke-gcloud-auth-plugin
-
+      - name: Apply Kubernetes manifests
+        run: kubectl apply -f k8s/
       - name: Update deployment image to new SHA tag
         run: |
           kubectl set image deployment/chatapp chatapp=$IMAGE_NAME:$IMAGE_TAG -n chatapp
