@@ -62,7 +62,22 @@ spec:
                 secretKeyRef:
                   name: chatapp-secrets
                   key: GOOGLE_REDIRECT_URI
-#          livenessProbe:
+            - name : REDIS_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: chatapp-secrets
+                  key: REDIS_HOST
+            - name : REDIS_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: chatapp-secrets
+                  key:  REDIS_PORT
+            - name : REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: redis-prod
+                  key: redis-password
+##          livenessProbe:
 #            httpGet:
 #              path: /actuator/health
 #              port: 8080
