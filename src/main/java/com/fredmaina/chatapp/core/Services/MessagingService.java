@@ -7,18 +7,18 @@ import com.fredmaina.chatapp.core.DTOs.MessageType;
 import com.fredmaina.chatapp.core.DTOs.WebSocketMessagePayload;
 import com.fredmaina.chatapp.core.Repositories.ChatMessageRepository;
 import com.fredmaina.chatapp.core.models.ChatMessage;
-import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
 import java.io.IOException;
-import java.time.Instant; // Changed from LocalDateTime
-import java.time.format.DateTimeFormatter; // Import DateTimeFormatter
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -26,7 +26,6 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 public class MessagingService {
 
-    // Optional: expose this for WebSocket connection registration
     @Getter
     private final ConcurrentHashMap<String, WebSocketSession> userSessions = new ConcurrentHashMap<>();
     @Getter
@@ -40,6 +39,9 @@ public class MessagingService {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
 
     public void sendMessageFromAnonymous(String sessionId, WebSocketMessagePayload dto) {
         if (dto.getContent() == null || dto.getContent().isBlank()) {
@@ -55,71 +57,85 @@ public class MessagingService {
                 .fromSessionId(sessionId)
                 .nickname(dto.getNickname())
                 .toUser(toUser)
-                .timestamp(Instant.now()) // Use Instant.now()
+                .timestamp(Instant.now())
                 .build();
 
         chatMessageRepository.save(message);
-        log.info("Saved message from anon to user {}: {}", toUser.getUsername(), dto.getContent());
 
-        WebSocketSession receiverSession = userSessions.get(toUser.getEmail());
+        log.info("Saved anon → user msg: {} → {}", sessionId, toUser.getUsername());
 
+        WebSocketMessagePayload payload = new WebSocketMessagePayload(
+                MessageType.ANON_TO_USER,
+                sessionId,
+                toUser.getUsername(),
+                dto.getContent(),
+                dto.getNickname(),
+                DateTimeFormatter.ISO_INSTANT.format(message.getTimestamp())
+        );
 
-        if (receiverSession != null && receiverSession.isOpen()) {
-            try {
-                WebSocketMessagePayload payload = new WebSocketMessagePayload(
-                        MessageType.ANON_TO_USER,
-                        sessionId,
-                        toUser.getUsername(),
-                        dto.getContent(),
-                        dto.getNickname(),
-                        DateTimeFormatter.ISO_INSTANT.format(Instant.now()) // Format Instant for payload
-                );
-                receiverSession.sendMessage(new TextMessage(objectMapper.writeValueAsString(payload)));
-            } catch (IOException e) {
-                log.error("Error sending message to user {}: {}", toUser.getUsername(), e.getMessage());
-            }
+        try {
+            redisTemplate.convertAndSend("chat-messages", objectMapper.writeValueAsString(payload));
+        } catch (Exception e) {
+            log.error("Failed to publish message to Redis", e);
         }
     }
+
     public void sendMessageFromUser(String username, String targetSessionId, String content) {
         if (content == null || content.isBlank()) {
             log.warn("Empty message from user {}", username);
             return;
         }
+
+        User fromUser = userRepository.findByUsernameOrEmail(username, username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
         ChatMessage message = ChatMessage.builder()
                 .content(content)
-                .fromUser(userRepository.findByUsernameOrEmail(username, username)
-                        .orElseThrow(() -> new RuntimeException("User not found")))
+                .fromUser(fromUser)
                 .toSessionId(targetSessionId)
                 .timestamp(Instant.now())
                 .build();
 
         chatMessageRepository.save(message);
-        log.info("Saved message from user {} to anon session {}", username, targetSessionId);
 
-        WebSocketSession session = anonymousSessions.get(targetSessionId);
-        if (session != null && session.isOpen()) {
-            try {
-                WebSocketMessagePayload payload = new WebSocketMessagePayload(
-                        MessageType.USER_TO_ANON,
-                        username,
-                        targetSessionId,
-                        content,
-                        null,
-                        DateTimeFormatter.ISO_INSTANT.format(message.getTimestamp())
-                );
+        log.info("Saved user → anon msg: {} → {}", username, targetSessionId);
 
-                session.sendMessage(new TextMessage(objectMapper.writeValueAsString(payload)));
-                chatMessageRepository.save(message);
-            } catch (IOException e) {
-                log.error("Error sending message from {} to anon {}: {}", username, targetSessionId, e.getMessage());
-            }
+        WebSocketMessagePayload payload = new WebSocketMessagePayload(
+                MessageType.USER_TO_ANON,
+                username,
+                targetSessionId,
+                content,
+                null,
+                DateTimeFormatter.ISO_INSTANT.format(message.getTimestamp())
+        );
+
+        try {
+            redisTemplate.convertAndSend("chat-messages", objectMapper.writeValueAsString(payload));
+        } catch (Exception e) {
+            log.error("Failed to publish message to Redis", e);
         }
     }
 
-
     @Transactional
     public void setMessageAsRead(String sessionId) {
-        log.info("Setting messages as read {}", sessionId);
+        log.info("Marking messages as read for session {}", sessionId);
         chatMessageRepository.markMessagesAsRead(sessionId);
+    }
+
+    // For RedisSubscriber to call
+    public void deliverToSession(String to, String json, boolean isUser) {
+        WebSocketSession session = isUser
+                ? userSessions.get(to)
+                : anonymousSessions.get(to);
+
+        if (session != null && session.isOpen()) {
+            try {
+                session.sendMessage(new TextMessage(json));
+            } catch (IOException e) {
+                log.error("Failed to deliver message to {} session: {}", to, e.getMessage());
+            }
+        } else {
+            log.warn("No active WebSocket session for {}", to);
+        }
     }
 }
