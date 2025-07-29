@@ -11,6 +11,7 @@ import com.fredmaina.chatapp.Auth.Repositories.UserRepository;
 import com.fredmaina.chatapp.Auth.configs.GoogleOAuthProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.*;
@@ -39,6 +40,8 @@ public class AuthService {
     @Autowired
     RestTemplate restTemplate;
 
+
+    @CacheEvict(value = "usernameCheck", key = "#user.username.toLowerCase()")
     public AuthResponse signUp(SignUpRequest request) {
         AuthResponse authResponse = new AuthResponse();
 
@@ -138,7 +141,7 @@ public class AuthService {
     }
 
 
-
+    @CacheEvict(value = "usernameCheck", key = "#user.username.toLowerCase()")
     public AuthResponse handleGoogleOAuth(String code, String redirectUri) {
         try {
             HttpHeaders headers = new HttpHeaders();
@@ -229,6 +232,7 @@ public class AuthService {
         }
     }
 
+    @CacheEvict(value = "usernameCheck", key = "#user.username.toLowerCase()")
     public AuthResponse setUsername(String email, String username) {
         // Check if the desired username (case-insensitive) is already taken by another user
         Optional<User> userByUsername = userRepository.findByUsernameIgnoreCase(username);

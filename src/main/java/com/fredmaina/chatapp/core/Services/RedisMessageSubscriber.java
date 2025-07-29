@@ -26,6 +26,7 @@ public class RedisMessageSubscriber implements MessageListener {
             String json = new String(message.getBody(), StandardCharsets.UTF_8);
             WebSocketMessagePayload payload = objectMapper.readValue(json, WebSocketMessagePayload.class);
             if (payload.getType().name().equals("ANON_TO_USER")) {
+
                 WebSocketSession session = messagingService.getUserSessions().get(payload.getTo());
                 if (session != null && session.isOpen()) {
                     session.sendMessage(new TextMessage(json));
