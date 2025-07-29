@@ -1,6 +1,8 @@
 package com.fredmaina.chatapp.core.Controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fredmaina.chatapp.Auth.Models.User;
+import com.fredmaina.chatapp.Auth.Repositories.UserRepository;
 import com.fredmaina.chatapp.Auth.services.JWTService;
 import com.fredmaina.chatapp.core.DTOs.WebSocketMessagePayload;
 import com.fredmaina.chatapp.core.Services.MessagingService;
@@ -26,22 +28,24 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
     private final MessagingService messagingService;
 
-    @Autowired
-    private JWTService jwtService;
+    private final JWTService jwtService;
 
     private final Map<String, WebSocketSession> userSessions = new ConcurrentHashMap<>();
     private final Map<String, WebSocketSession> anonymousSessions = new ConcurrentHashMap<>();
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final  UserRepository userRepository;
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
         String email = extractUsernameFromJWT(session);
         String anonId = extractAnonSessionId(session);
+        Optional<String> userName = userRepository.findByEmail(email).map(User::getUsername);
 
-        if (email != null) {
-            userSessions.put(email, session);
-            log.info("Authenticated user connected: {}", email);
+        if (userName.isPresent()) {
+            String user =userName.get();
+            userSessions.put(user, session);
+            log.info("Authenticated user connected: {}, with nickname: {}", email,user);
         } else if (anonId != null) {
             anonymousSessions.put(anonId, session);
             log.info("Anonymous user connected: {}", anonId);
