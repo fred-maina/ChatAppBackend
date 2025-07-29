@@ -51,7 +51,7 @@ jobs:
             cd /home/ec2-user/chatapp
 
             echo "🔁 Updating image tag in docker-compose.yaml"
-            sed -i 's|image: fredmaina/chatapp:.*|image: fredmaina/chatapp:${{ github.sha }}|' docker-compose.yml
+            sed -i 's|image: fredmaina/chatapp:.*|image: fredmaina/chatapp:${{ github.sha }}|' docker-compose.yaml
 
             echo "📦 Pulling new Docker image"
             docker pull fredmaina/chatapp:${{ github.sha }}
