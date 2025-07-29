@@ -14,11 +14,6 @@ import org.springframework.data.redis.core.RedisTemplate;
 public class RedisConfig {
 
     @Bean
-    public RedisConnectionFactory redisConnectionFactory() {
-        return new LettuceConnectionFactory();
-    }
-
-    @Bean
     public RedisMessageListenerContainer redisContainer(RedisConnectionFactory connectionFactory,
                                                         MessageListenerAdapter listenerAdapter) {
         RedisMessageListenerContainer container = new RedisMessageListenerContainer();
