@@ -141,7 +141,6 @@ public class AuthService {
     }
 
 
-    @CacheEvict(value = "usernameCheck", key = "#user.username.toLowerCase()")
     public AuthResponse handleGoogleOAuth(String code, String redirectUri) {
         try {
             HttpHeaders headers = new HttpHeaders();
@@ -232,7 +231,7 @@ public class AuthService {
         }
     }
 
-    @CacheEvict(value = "usernameCheck", key = "#user.username.toLowerCase()")
+    @CacheEvict(value = "usernameCheck", key = "#username.toLowerCase()")
     public AuthResponse setUsername(String email, String username) {
         // Check if the desired username (case-insensitive) is already taken by another user
         Optional<User> userByUsername = userRepository.findByUsernameIgnoreCase(username);
