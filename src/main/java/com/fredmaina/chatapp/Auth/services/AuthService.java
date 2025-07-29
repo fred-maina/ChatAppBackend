@@ -11,6 +11,7 @@ import com.fredmaina.chatapp.Auth.Repositories.UserRepository;
 import com.fredmaina.chatapp.Auth.configs.GoogleOAuthProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -263,4 +264,11 @@ public class AuthService {
                 .success(false)
                 .build();
     }
+    @Cacheable(value = "usernameCheck", key = "#username != null ? #username.toLowerCase() : 'null'")
+    public boolean checkUsernameExists(String username) {
+        if (username == null) return false; // or throw IllegalArgumentException
+        return userRepository.existsByUsernameIgnoreCase(username);
+    }
+
+
 }

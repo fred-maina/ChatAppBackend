@@ -109,7 +109,7 @@ public class AuthController {
     public ResponseEntity<Map<String, Object>> checkUsername(@PathVariable String username) {
         try {
             // Use the case-insensitive check
-            boolean exists = userRepository.existsByUsernameIgnoreCase(username);
+            boolean exists = authService.checkUsernameExists(username);
             if (exists) {
                 return ResponseEntity.ok(Map.of(
                         "success", true,
