@@ -266,7 +266,8 @@ public class AuthService {
     }
     @Cacheable(value = "usernameCheck", key = "#username != null ? #username.toLowerCase() : 'null'")
     public boolean checkUsernameExists(String username) {
-        if (username == null) return false; // or throw IllegalArgumentException
+        log.info("checking if username: {} exists",username);
+        if (username == null) return false;
         return userRepository.existsByUsernameIgnoreCase(username);
     }
 

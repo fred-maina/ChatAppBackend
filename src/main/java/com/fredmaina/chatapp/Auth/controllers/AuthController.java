@@ -108,7 +108,6 @@ public class AuthController {
     @GetMapping("/check-username/{username}")
     public ResponseEntity<Map<String, Object>> checkUsername(@PathVariable String username) {
         try {
-            // Use the case-insensitive check
             boolean exists = authService.checkUsernameExists(username);
             if (exists) {
                 return ResponseEntity.ok(Map.of(
@@ -117,6 +116,7 @@ public class AuthController {
                         "username", username
                 ));
             } else {
+                log.error("username {} not found for some weird reason", username);
                 return ResponseEntity.ok(Map.of(
                         "success", true,
                         "exists", false
