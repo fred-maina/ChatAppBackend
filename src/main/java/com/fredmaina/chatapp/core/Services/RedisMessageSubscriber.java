@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
+import java.nio.charset.StandardCharsets;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -21,7 +23,8 @@ public class RedisMessageSubscriber implements MessageListener {
     @Override
     public void onMessage(Message message, byte[] pattern) {
         try {
-            String json = new String(message.getBody());
+            String json = new String(message.getBody(), StandardCharsets.UTF_8);
+            log.info("Received message from Redis: {}", json);
             WebSocketMessagePayload payload = objectMapper.readValue(json, WebSocketMessagePayload.class);
 
             log.info("Received message from Redis: {}", payload);
