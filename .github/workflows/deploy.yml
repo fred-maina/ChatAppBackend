@@ -50,7 +50,7 @@ jobs:
             echo "📁 Moving into project directory"
             cd /home/ec2-user/chatapp
 
-            echo "🔁 Updating image tag in docker-compose.yml"
+            echo "🔁 Updating image tag in docker-compose.yaml"
             sed -i 's|image: fredmaina/chatapp:.*|image: fredmaina/chatapp:${{ github.sha }}|' docker-compose.yml
 
             echo "📦 Pulling new Docker image"
