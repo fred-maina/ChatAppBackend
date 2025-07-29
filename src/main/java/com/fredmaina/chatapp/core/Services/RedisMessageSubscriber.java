@@ -24,18 +24,17 @@ public class RedisMessageSubscriber implements MessageListener {
     public void onMessage(Message message, byte[] pattern) {
         try {
             String json = new String(message.getBody(), StandardCharsets.UTF_8);
-            log.info("Received message from Redis: {}", json);
             WebSocketMessagePayload payload = objectMapper.readValue(json, WebSocketMessagePayload.class);
-
-            log.info("Received message from Redis: {}", payload);
-
             if (payload.getType().name().equals("ANON_TO_USER")) {
                 WebSocketSession session = messagingService.getUserSessions().get(payload.getTo());
                 if (session != null && session.isOpen()) {
                     session.sendMessage(new TextMessage(json));
+                } else {
+                    log.warn("No active WebSocket session found for user: {}", payload.getTo());
                 }
-            } else if (payload.getType().name().equals("USER_TO_ANON")) {
+        } else if (payload.getType().name().equals("USER_TO_ANON")) {
                 WebSocketSession session = messagingService.getAnonymousSessions().get(payload.getTo());
+
                 if (session != null && session.isOpen()) {
                     session.sendMessage(new TextMessage(json));
                 }
