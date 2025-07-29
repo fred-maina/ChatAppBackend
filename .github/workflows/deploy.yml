@@ -1,4 +1,4 @@
-name: Build and Deploy to GKE
+name: Build and Deploy to EC2
 
 on:
   push:
@@ -39,35 +39,24 @@ jobs:
           docker build -t $IMAGE_NAME:$IMAGE_TAG .
           docker push $IMAGE_NAME:$IMAGE_TAG
 
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
+      - name: Deploy to EC2 and restart containers
+        uses: appleboy/ssh-action@v1.0.3
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          script: |
+            echo "📁 Moving into project directory"
+            cd /home/ec2-user/chatapp
 
-      - name: Set up gcloud CLI
-        uses: google-github-actions/setup-gcloud@v2
-        with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
+            echo "🔁 Updating image tag in docker-compose.yml"
+            sed -i 's|image: fredmaina/chatapp:.*|image: fredmaina/chatapp:${{ github.sha }}|' docker-compose.yml
 
-      - name: Get GKE credentials
-        run: |
-          gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER_NAME }} \
-            --zone ${{ secrets.GKE_CLUSTER_ZONE }} \
-            --project ${{ secrets.GCP_PROJECT_ID }}
+            echo "📦 Pulling new Docker image"
+            docker pull fredmaina/chatapp:${{ github.sha }}
 
-      - name: Install gke-gcloud-auth-plugin via gcloud CLI
-        run: |
-          gcloud components install gke-gcloud-auth-plugin
+            echo "🚀 Restarting containers using existing .env file"
+            docker-compose --env-file .env up -d --remove-orphans
 
-      - name: Replace image tag in deployment template
-        run: |
-          mkdir -p k8s/generated
-          IMAGE_TAG=${IMAGE_TAG} envsubst < k8s/deployment.yaml > k8s/generated/chatapp-deployment.yaml
-
-      - name: Apply Kubernetes manifests
-        run: |
-          kubectl apply -f k8s/generated/
-
-      - name: Wait for rollout to complete
-        run: |
-          kubectl rollout status deployment/chatapp -n chatapp
+            echo "✅ Deployment complete"
