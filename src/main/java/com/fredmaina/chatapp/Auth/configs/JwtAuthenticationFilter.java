@@ -3,6 +3,7 @@ package com.fredmaina.chatapp.Auth.configs;
 
 import com.fredmaina.chatapp.Auth.services.JWTService;
 import com.fredmaina.chatapp.Auth.services.UserDetailsServiceImpl;
+import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,7 +35,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
             jwt = authorizationHeader.substring(7);
-            username = jwtService.getUsernameFromToken(jwt);
+            try {
+                username = jwtService.getUsernameFromToken(jwt);
+            }
+            catch (ExpiredJwtException e) {
+                log.warn("The token is expired and not valid anymore");
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.getWriter().write("Token expired");
+                return;
+            }
         }
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
