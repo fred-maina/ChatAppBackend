@@ -110,6 +110,11 @@
 		</dependency>
 
 		<dependency>
+			<groupId>io.micrometer</groupId>
+			<artifactId>micrometer-registry-prometheus</artifactId>
+		</dependency>
+
+		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-redis</artifactId>
 		</dependency>
@@ -130,6 +135,26 @@
 					</annotationProcessorPaths>
 				</configuration>
 			</plugin>
+				<!-- JaCoCo plugin to generate code coverage reports -->
+				<plugin>
+					<groupId>org.jacoco</groupId>
+					<artifactId>jacoco-maven-plugin</artifactId>
+					<version>0.8.10</version> <!-- Use latest version -->
+					<executions>
+						<execution>
+							<goals>
+								<goal>prepare-agent</goal> <!-- Attach to test phase -->
+							</goals>
+						</execution>
+						<execution>
+							<id>report</id>
+							<phase>verify</phase>
+							<goals>
+								<goal>report</goal> <!-- Generate report after tests -->
+							</goals>
+						</execution>
+					</executions>
+				</plugin>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
