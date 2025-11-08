@@ -17,9 +17,6 @@ We are accepting contributions! You can get started by following these steps:
     * In your PR description, link to the issue you are solving (e.g., "Closes #123").
     * Provide a clear description of what you did and why.
 
-## Code of Conduct
-
-This project and everyone participating in it is governed by a [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code. (Note: You will need to create this file, but for now, this link is a placeholder).
 
 ## Questions?
 
