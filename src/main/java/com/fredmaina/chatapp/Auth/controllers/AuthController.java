@@ -34,7 +34,6 @@ public class AuthController {
         if(authResponse.isSuccess()){
             return ResponseEntity.ok(authResponse);
         }
-        // It's better to return a more specific status code for login failure, e.g., 401 Unauthorized
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(authResponse);
 
     }
@@ -43,10 +42,8 @@ public class AuthController {
     public ResponseEntity<AuthResponse> register(@RequestBody SignUpRequest signUpRequest) {
         AuthResponse authResponse = authService.signUp(signUpRequest);
         if(authResponse.isSuccess()){
-            // For successful registration, 201 Created is often more appropriate than 200 OK
             return ResponseEntity.status(HttpStatus.CREATED).body(authResponse);
         }
-        // For failures like "username/email exists", 409 Conflict or 400 Bad Request might be better than 500
         if ("Username already exists (case-insensitive)".equals(authResponse.getMessage()) || "Email already exists".equals(authResponse.getMessage())) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(authResponse);
         }
