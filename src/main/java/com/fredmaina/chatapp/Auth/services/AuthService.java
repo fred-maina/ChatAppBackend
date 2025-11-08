@@ -15,6 +15,7 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.*;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
@@ -28,31 +29,31 @@ import java.util.Optional;
 @Service
 @Slf4j
 public class AuthService {
-    @Autowired
-    UserRepository userRepository;
-    @Autowired
-    PasswordEncoder passwordEncoder;
+
+    final UserRepository userRepository;
+    final PasswordEncoder passwordEncoder;
+    final JWTService jwtService;
+    final GoogleOAuthProperties googleOAuthProperties;
+    final RestTemplate restTemplate;
 
     @Autowired
-    JWTService jwtService;
-    @Autowired
-    GoogleOAuthProperties googleOAuthProperties;
-    @Autowired
-    RestTemplate restTemplate;
+    AuthService (UserRepository userRepository, PasswordEncoder passwordEncoder, GoogleOAuthProperties googleOAuthProperties,RestTemplate restTemplate,JWTService jwtService) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.googleOAuthProperties = googleOAuthProperties;
+        this.restTemplate = restTemplate;
+        this.jwtService = jwtService;
+    }
 
 
-    @CacheEvict(value = "usernameCheck", key = "#user.username.toLowerCase()")
+    @CacheEvict(value = "usernameCheck", key = "#request.username.toLowerCase()")
     public AuthResponse signUp(SignUpRequest request) {
         AuthResponse authResponse = new AuthResponse();
-
-        // Case-insensitive check for username
         if (request.getUsername() != null && userRepository.findByUsernameIgnoreCase(request.getUsername()).isPresent()) {
             authResponse.setMessage("Username already exists (case-insensitive)");
             authResponse.setSuccess(false);
             return authResponse;
         }
-
-        // Check for existing email (which is already case-sensitive by default in most DBs or handled by your existing logic)
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             authResponse.setMessage("Email already exists");
             authResponse.setSuccess(false);
@@ -61,7 +62,7 @@ public class AuthService {
 
 
         User user = new User();
-        user.setUsername(request.getUsername()); // Store the original case
+        user.setUsername(request.getUsername());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setEmail(request.getEmail());
         user.setFirstName(request.getFirstName());
@@ -79,11 +80,9 @@ public class AuthService {
             authResponse.setUser(user);
             authResponse.setToken(token);
         } catch (DataIntegrityViolationException e) {
-            // This catch block might still be useful for other constraints,
-            // but the primary username and email checks are now done above.
-            if (e.getMessage().contains("users_email_key")) { // Should ideally be caught by the check above
+            if (e.getMessage().contains("users_email_key")) {
                 authResponse.setMessage("Email already exists");
-            } else if (e.getMessage().contains("idx_user_username") || e.getMessage().contains("users_username_key")) { // Should ideally be caught by the check above
+            } else if (e.getMessage().contains("idx_user_username") || e.getMessage().contains("users_username_key")) {
                 authResponse.setMessage("Username already exists");
             } else {
                 log.error("Data integrity violation during sign up: {}", e.getMessage());
@@ -111,13 +110,10 @@ public class AuthService {
 
         User user = null;
 
-        // Try email lookup first
         Optional<User> byEmail = userRepository.findByEmail(input);
         if (byEmail.isPresent()) {
             user = byEmail.get();
         } else {
-            // Then try username lookup (case-insensitive for login flexibility, if desired)
-            // If you want case-sensitive login for username, use userRepository.findByUsername(input)
             Optional<User> byUsername = userRepository.findByUsernameIgnoreCase(input);
             if (byUsername.isPresent()) {
                 user = byUsername.get();
@@ -145,8 +141,6 @@ public class AuthService {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-
-            // Prepare form parameters
             MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
             params.add("code", code);
             params.add("client_id", googleOAuthProperties.getClientId());
@@ -156,10 +150,8 @@ public class AuthService {
 
             log.info("Sending token request with params: {}", params);
 
-            // Build the request
             HttpEntity<MultiValueMap<String, String>> tokenRequest = new HttpEntity<>(params, headers);
 
-            // Step 1: Request access token
             ResponseEntity<Map> tokenResponse = restTemplate.postForEntity(
                     "https://oauth2.googleapis.com/token", tokenRequest, Map.class);
 
@@ -177,7 +169,6 @@ public class AuthService {
                 return new AuthResponse(false, "OAuth failed: Missing id_token", null, null);
             }
 
-            // Step 2: Validate id_token
             String tokenInfoUrl = "https://oauth2.googleapis.com/tokeninfo?id_token=" + idToken;
             log.info("Validating id_token via: {}", tokenInfoUrl);
 
@@ -198,7 +189,6 @@ public class AuthService {
             String firstName = (String) body.get("given_name");
             String lastName = (String) body.get("family_name");
 
-            // Step 3: Register or retrieve user
             Optional<User> existingUser = userRepository.findByEmail(email);
             User user = existingUser.orElseGet(() -> {
                 User newUser = new User();
@@ -207,9 +197,6 @@ public class AuthService {
                 newUser.setLastName(lastName);
                 newUser.setVerified(true);
                 newUser.setRole(Role.USER);
-                // For Google OAuth users, username can be initially null or set to a default
-                // or prompt them to set it later.
-                // newUser.setUsername(null); // Or some generated unique value if needed immediately
                 return userRepository.save(newUser);
             });
 
@@ -233,7 +220,6 @@ public class AuthService {
 
     @CacheEvict(value = "usernameCheck", key = "#username.toLowerCase()")
     public AuthResponse setUsername(String email, String username) {
-        // Check if the desired username (case-insensitive) is already taken by another user
         Optional<User> userByUsername = userRepository.findByUsernameIgnoreCase(username);
         if (userByUsername.isPresent() && !userByUsername.get().getEmail().equalsIgnoreCase(email)) {
             return AuthResponse.builder()
@@ -245,7 +231,7 @@ public class AuthService {
         Optional<User> existingUserByEmail = userRepository.findByEmail(email);
         if (existingUserByEmail.isPresent()) {
             User user = existingUserByEmail.get();
-            user.setUsername(username); // Store with original casing
+            user.setUsername(username);
             try {
                 userRepository.save(user);
                 return AuthResponse.builder()
