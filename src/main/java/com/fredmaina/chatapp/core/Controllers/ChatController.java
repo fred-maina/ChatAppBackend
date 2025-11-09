@@ -8,6 +8,8 @@ import com.fredmaina.chatapp.core.DTOs.ChatMessageDto;
 import com.fredmaina.chatapp.core.DTOs.ChatSessionDto;
 import com.fredmaina.chatapp.core.Repositories.ChatMessageRepository;
 import com.fredmaina.chatapp.core.Services.ChatService;
+import com.fredmaina.chatapp.core.error.ResourceNotFoundException;
+import com.fredmaina.chatapp.core.error.UnauthorizedException;
 import com.fredmaina.chatapp.core.models.ChatMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,7 +40,7 @@ public class ChatController {
     @GetMapping("/chats")
     public ResponseEntity<?> getUserChats(@RequestHeader(value = "Authorization", required = false) String authHeader) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success",false,"message","Missing or invalid Authorization header"));
+            throw  new UnauthorizedException("Missing or invalid Authorization header");
         }
 
         String token = authHeader.replace("Bearer ", "");
@@ -46,13 +48,13 @@ public class ChatController {
         try {
             email = jwtService.getUsernameFromToken(token);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success",false,"message","Invalid token"));
+            throw  new UnauthorizedException("Invalid token");
         }
 
         Optional<User> userOptional = userRepository.findByEmail(email);
 
         if (userOptional.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("success",false,"message","User not found"));
+            throw new ResourceNotFoundException("User not found");
         }
 
         User user = userOptional.get();
@@ -77,7 +79,7 @@ public class ChatController {
             @PathVariable String anonSessionId) {
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success", false, "message", "Missing or invalid Authorization header"));
+            throw new UnauthorizedException("Missing or invalid Authorization header");
         }
 
         String token = authHeader.replace("Bearer ", "");
@@ -85,12 +87,12 @@ public class ChatController {
         try {
             email = jwtService.getUsernameFromToken(token);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success", false, "message", "Invalid token"));
+            throw new UnauthorizedException("Invalid token");
         }
 
         Optional<User> userOptional = userRepository.findByEmail(email);
         if (userOptional.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("success", false, "message", "User not found"));
+            throw new ResourceNotFoundException("User not found");
         }
         User user = userOptional.get();
 
@@ -98,8 +100,9 @@ public class ChatController {
             chatService.deleteChatSession(user.getId(), anonSessionId);
             return ResponseEntity.ok(Map.of("success", true, "message", "Chat session deleted successfully."));
         } catch (RuntimeException e) {
-            // Log the exception e
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("success", false, "message", "Failed to delete chat session: " + e.getMessage()));
+            final String errMsg = String.format("Error deleting chat session %s",e.getMessage());
+            log.error(errMsg);
+            throw new RuntimeException(errMsg);
         }
     }
 }
