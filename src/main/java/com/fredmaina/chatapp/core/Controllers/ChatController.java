@@ -63,11 +63,31 @@ public class ChatController {
     @GetMapping("/chat/session_history")
     public ResponseEntity<?> getAnonChatHistory(
             @RequestParam String sessionId,
-            @RequestParam String recipient // This is the username of the dashboard owner
+            @RequestParam String recipient,
+            @RequestHeader(value = "Authorization", required = false) String authHeader
     ) {
-        ;
-        List<ChatMessageDto> messages = chatService.getChatHistoryForAnonymous(sessionId, recipient);
 
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("success", false, "message", "Missing or invalid Authorization header"));
+        }
+
+        String token = authHeader.substring(7);
+
+        String username;
+        try {
+            username = jwtService.getUsernameFromToken(token);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("success", false, "message", "Invalid or expired token"));
+        }
+
+        if (!username.equals(recipient)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("success", false, "message", "You are not allowed to access this chat history"));
+        }
+
+        List<ChatMessageDto> messages = chatService.getChatHistoryForAnonymous(sessionId, recipient);
         return ResponseEntity.ok(Map.of("success", true, "messages", messages));
     }
 
