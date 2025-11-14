@@ -6,6 +6,10 @@ import com.fredmaina.chatapp.Auth.Models.User;
 import com.fredmaina.chatapp.Auth.Repositories.UserRepository;
 import com.fredmaina.chatapp.Auth.services.AuthService;
 import com.fredmaina.chatapp.Auth.services.JWTService;
+import com.fredmaina.chatapp.core.error.BadRequestException;
+import com.fredmaina.chatapp.core.error.DataAlreadyExistsException;
+import com.fredmaina.chatapp.core.error.ResourceNotFoundException;
+import com.fredmaina.chatapp.core.error.UnauthorizedException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -34,7 +38,7 @@ public class AuthController {
         if(authResponse.isSuccess()){
             return ResponseEntity.ok(authResponse);
         }
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(authResponse);
+        throw new UnauthorizedException("Invalid username or password");
 
     }
 
@@ -45,9 +49,9 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.CREATED).body(authResponse);
         }
         if ("Username already exists (case-insensitive)".equals(authResponse.getMessage()) || "Email already exists".equals(authResponse.getMessage())) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(authResponse);
+            throw new DataAlreadyExistsException("Username or email already exists");
         }
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(authResponse); // General bad request for other issues
+        throw new BadRequestException("Bad request"); // General bad request for other issues
     }
     @PostMapping("/oauth/google")
     public ResponseEntity<?> googleOAuth(@RequestBody GoogleOAuthRequest request) {
@@ -58,7 +62,7 @@ public class AuthController {
             return ResponseEntity.ok(response);
         } else {
             log.warn("Google OAuth failed: {}", response.getMessage());
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+            throw new UnauthorizedException("Error while contacting Google OAuth");
         }
     }
 
@@ -69,8 +73,7 @@ public class AuthController {
         User user = userRepository.findByEmail(email).orElse(null);
 
         if (user == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(AuthResponse.builder().success(false).message("User not found for provided token.").build());
+            throw new ResourceNotFoundException("User not found for provided token.");
         }
 
         return ResponseEntity.ok(
@@ -86,8 +89,7 @@ public class AuthController {
         String username = map.get("username");
 
         if (email == null || email.isBlank() || username == null || username.isBlank()) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(AuthResponse.builder().success(false).message("Email and username are required.").build());
+            throw new BadRequestException("Email and username are required.");
         }
 
         AuthResponse authResponse = authService.setUsername(email,username);
@@ -96,9 +98,9 @@ public class AuthController {
         }
         // Distinguish between user not found and username taken
         if ("Username already taken (case-insensitive)".equals(authResponse.getMessage())) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(authResponse);
+            throw new DataAlreadyExistsException(authResponse.getMessage());
         }
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(authResponse); // Assuming "Invalid email" means user not found
+        throw new ResourceNotFoundException("User not found"); // Assuming "Invalid email" means user not found
 
     }
 
@@ -114,17 +116,11 @@ public class AuthController {
                 ));
             } else {
                 log.error("username {} not found for some weird reason", username);
-                return ResponseEntity.ok(Map.of(
-                        "success", true,
-                        "exists", false
-                ));
+                throw new ResourceNotFoundException("username not found");
             }
         } catch (Exception e) {
             log.error("Error checking username: {}", username, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
-                    "success", false,
-                    "message", "Error checking username"
-            ));
+            throw new RuntimeException("Error checking username");
         }
     }
 }
