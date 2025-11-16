@@ -11,6 +11,7 @@ import jakarta.transaction.Transactional;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.CacheManager;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.socket.TextMessage;
@@ -19,6 +20,7 @@ import org.springframework.web.socket.WebSocketSession;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -41,6 +43,9 @@ public class MessagingService {
     private ObjectMapper objectMapper;
 
     @Autowired
+    private CacheManager cacheManager;
+
+    @Autowired
     private RedisTemplate<String, Object> redisTemplate;
 
     public void sendMessageFromAnonymous(String sessionId, WebSocketMessagePayload dto) {
@@ -61,6 +66,14 @@ public class MessagingService {
                 .build();
 
         chatMessageRepository.save(message);
+
+        try {
+            Objects.requireNonNull(cacheManager.getCache("chatSessions"))
+                    .evict(toUser.getId());
+            log.info("Evicted chatSessions cache for userId={}", toUser.getId());
+        } catch (Exception e) {
+            log.error("Cache eviction failed for userId={}", toUser.getId(), e);
+        }
 
         log.info("Saved anon → user msg: {} → {}", sessionId, toUser.getUsername());
 
