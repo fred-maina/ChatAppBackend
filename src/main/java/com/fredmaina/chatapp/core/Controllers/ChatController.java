@@ -6,6 +6,7 @@ import com.fredmaina.chatapp.Auth.Repositories.UserRepository;
 import com.fredmaina.chatapp.Auth.services.JWTService;
 import com.fredmaina.chatapp.core.DTOs.ChatMessageDto;
 import com.fredmaina.chatapp.core.DTOs.ChatSessionDto;
+import com.fredmaina.chatapp.core.DTOs.PaginationDto;
 import com.fredmaina.chatapp.core.Repositories.ChatMessageRepository;
 import com.fredmaina.chatapp.core.Services.ChatService;
 import com.fredmaina.chatapp.core.models.ChatMessage;
@@ -63,12 +64,21 @@ public class ChatController {
     @GetMapping("/chat/session_history")
     public ResponseEntity<?> getAnonChatHistory(
             @RequestParam String sessionId,
-            @RequestParam String recipient // This is the username of the dashboard owner
+            @RequestParam String recipient, // This is the username of the dashboard owner
+             @RequestParam(defaultValue = "0") int page,
+    @RequestParam(defaultValue = "50") int size
     ) {
-        ;
-        List<ChatMessageDto> messages = chatService.getChatHistoryForAnonymous(sessionId, recipient);
+        PaginationDto chatPage =
+                chatService.getChatHistoryForAnonymous(sessionId, recipient, page, size);
 
-        return ResponseEntity.ok(Map.of("success", true, "messages", messages));
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "page", chatPage.getPage(),
+                "size", chatPage.getSize(),
+                "totalPages", chatPage.getTotalPages(),
+                "hasNextPage", chatPage.isHasNextPage(),
+                "messages", chatPage.getMessages()
+        ));
     }
 
     @DeleteMapping("/chat/{anonSessionId}")
