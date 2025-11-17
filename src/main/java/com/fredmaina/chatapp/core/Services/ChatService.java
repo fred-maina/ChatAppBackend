@@ -5,11 +5,16 @@ import com.fredmaina.chatapp.Auth.Repositories.UserRepository;
 import com.fredmaina.chatapp.core.DTOs.ChatMessageDto;
 import com.fredmaina.chatapp.core.DTOs.ChatMessageMapper;
 import com.fredmaina.chatapp.core.DTOs.ChatSessionDto;
+import com.fredmaina.chatapp.core.DTOs.PaginationDto;
 import com.fredmaina.chatapp.core.Repositories.ChatMessageRepository;
 import com.fredmaina.chatapp.core.models.ChatMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -73,17 +78,27 @@ public class ChatService {
     }
 
     @Transactional
-    public List<ChatMessageDto> getChatHistoryForAnonymous(String sessionId, String recipientUsername) {
+    public PaginationDto getChatHistoryForAnonymous(String sessionId, String recipientUsername,
+                                                    int page,int size) {
         User recipient = userRepository.findByUsername(recipientUsername)
                 .orElseThrow(() -> new RuntimeException("Recipient user not found: " + recipientUsername));
 
-        List<ChatMessage> messages = chatMessageRepository.findFullChatHistory(sessionId,recipient.getId());
+        Pageable pageable = PageRequest.of(page, size, Sort.by("timestamp").descending());
+        Page<ChatMessage> messages = chatMessageRepository.findFullChatHistory(sessionId,recipient.getId(),pageable);
 
         chatMessageRepository.markMessagesAsRead(recipient.getId(), sessionId);
 
-        return messages.stream()
+        List<ChatMessageDto> dtoList = messages.stream()
                 .map(msg -> ChatMessageMapper.toDto(msg, recipient.getId()))
                 .collect(Collectors.toList());
+
+        return new PaginationDto(
+                dtoList,
+                messages.getNumber(),
+                messages.getSize(),
+                messages.getTotalPages(),
+                messages.hasNext()
+        );
     }
 
 

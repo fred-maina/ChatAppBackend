@@ -2,6 +2,8 @@ package com.fredmaina.chatapp.core.Repositories;
 
 import com.fredmaina.chatapp.Auth.Models.User;
 import com.fredmaina.chatapp.core.models.ChatMessage;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -24,8 +26,9 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, UUID> 
             "OR " +
             "(m.toSessionId = :sessionId AND m.fromUser.id = :recipientId) " +
             "ORDER BY m.timestamp")
-    List<ChatMessage> findFullChatHistory(@Param("sessionId") String sessionId,
-                                          @Param("recipientId") UUID recipientId);
+    Page<ChatMessage> findFullChatHistory(@Param("sessionId") String sessionId,
+                                          @Param("recipientId") UUID recipientId
+                                           , Pageable pageable);
 
 
 
