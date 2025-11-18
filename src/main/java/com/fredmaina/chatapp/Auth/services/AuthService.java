@@ -2,7 +2,6 @@ package com.fredmaina.chatapp.Auth.services;
 
 
 import com.fredmaina.chatapp.Auth.Dtos.AuthResponse;
-import com.fredmaina.chatapp.Auth.Dtos.GoogleOAuthRequest;
 import com.fredmaina.chatapp.Auth.Dtos.LoginRequest;
 import com.fredmaina.chatapp.Auth.Dtos.SignUpRequest;
 import com.fredmaina.chatapp.Auth.Models.Role;
@@ -15,14 +14,13 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.*;
-import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.HashMap;
+import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
 
@@ -37,7 +35,7 @@ public class AuthService {
     final RestTemplate restTemplate;
 
     @Autowired
-    AuthService (UserRepository userRepository, PasswordEncoder passwordEncoder, GoogleOAuthProperties googleOAuthProperties,RestTemplate restTemplate,JWTService jwtService) {
+    AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, GoogleOAuthProperties googleOAuthProperties, RestTemplate restTemplate, JWTService jwtService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.googleOAuthProperties = googleOAuthProperties;
@@ -133,6 +131,10 @@ public class AuthService {
         authResponse.setMessage("Login successful");
         authResponse.setUser(user);
         authResponse.setToken(token);
+
+        user.setLastLoginAt(loginRequest.getLastLoginAt());
+        userRepository.save(user);
+
         return authResponse;
     }
 
@@ -202,6 +204,9 @@ public class AuthService {
 
             String token = jwtService.generateToken(user.getEmail());
 
+            user.setLastLoginAt(Instant.now());
+            userRepository.save(user);
+
             return AuthResponse.builder()
                     .success(true)
                     .message("OAuth login successful")
@@ -253,9 +258,10 @@ public class AuthService {
                 .success(false)
                 .build();
     }
+
     @Cacheable(value = "usernameCheck", key = "#username != null ? #username.toLowerCase() : 'null'")
     public Boolean checkUsernameExists(String username) {
-        log.info("checking if username: {} exists",username);
+        log.info("checking if username: {} exists", username);
         if (username == null) return false;
         return userRepository.existsByUsernameIgnoreCase(username);
     }
