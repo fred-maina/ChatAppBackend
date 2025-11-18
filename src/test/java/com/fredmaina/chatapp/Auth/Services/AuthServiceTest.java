@@ -3,14 +3,15 @@ package com.fredmaina.chatapp.Auth.Services;
 import com.fredmaina.chatapp.Auth.Dtos.AuthResponse;
 import com.fredmaina.chatapp.Auth.Dtos.LoginRequest;
 import com.fredmaina.chatapp.Auth.Dtos.SignUpRequest;
-import com.fredmaina.chatapp.Auth.Models.Role;
 import com.fredmaina.chatapp.Auth.Models.User;
 import com.fredmaina.chatapp.Auth.Repositories.UserRepository;
 import com.fredmaina.chatapp.Auth.services.AuthService;
 import com.fredmaina.chatapp.Auth.services.JWTService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.*;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -106,7 +107,7 @@ class AuthServiceTest {
         user.setPassword("encodedPassword");
         user.setEmail("fred@example.com");
 
-        when(userRepository.findByUsername("fredmaina123")).thenReturn(Optional.of(user));
+        when(userRepository.findByUsernameIgnoreCase("fredmaina123")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("mypassword", "encodedPassword")).thenReturn(true);
         when(jwtService.generateToken(user.getEmail())).thenReturn("jwt-token");
 

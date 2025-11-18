@@ -1,7 +1,10 @@
 package com.fredmaina.chatapp.Auth.controllers;
 
 
-import com.fredmaina.chatapp.Auth.Dtos.*;
+import com.fredmaina.chatapp.Auth.Dtos.AuthResponse;
+import com.fredmaina.chatapp.Auth.Dtos.GoogleOAuthRequest;
+import com.fredmaina.chatapp.Auth.Dtos.LoginRequest;
+import com.fredmaina.chatapp.Auth.Dtos.SignUpRequest;
 import com.fredmaina.chatapp.Auth.Models.User;
 import com.fredmaina.chatapp.Auth.Repositories.UserRepository;
 import com.fredmaina.chatapp.Auth.services.AuthService;
@@ -32,7 +35,7 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest loginRequest) {
         AuthResponse authResponse = authService.login(loginRequest);
-        if(authResponse.isSuccess()){
+        if (authResponse.isSuccess()) {
             return ResponseEntity.ok(authResponse);
         }
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(authResponse);
@@ -42,7 +45,7 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody SignUpRequest signUpRequest) {
         AuthResponse authResponse = authService.signUp(signUpRequest);
-        if(authResponse.isSuccess()){
+        if (authResponse.isSuccess()) {
             return ResponseEntity.status(HttpStatus.CREATED).body(authResponse);
         }
         if ("Username already exists (case-insensitive)".equals(authResponse.getMessage()) || "Email already exists".equals(authResponse.getMessage())) {
@@ -50,6 +53,7 @@ public class AuthController {
         }
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(authResponse); // General bad request for other issues
     }
+
     @PostMapping("/oauth/google")
     public ResponseEntity<?> googleOAuth(@RequestBody GoogleOAuthRequest request) {
         AuthResponse response = authService.handleGoogleOAuth(request.getCode(), request.getRedirectUri());
@@ -81,8 +85,9 @@ public class AuthController {
                         .user(user)
                         .build());
     }
+
     @PostMapping("/set-username")
-    public ResponseEntity<AuthResponse> setUsername(@RequestBody Map<String,String> map) {
+    public ResponseEntity<AuthResponse> setUsername(@RequestBody Map<String, String> map) {
         String email = map.get("email");
         String username = map.get("username");
 
@@ -91,8 +96,8 @@ public class AuthController {
                     .body(AuthResponse.builder().success(false).message("Email and username are required.").build());
         }
 
-        AuthResponse authResponse = authService.setUsername(email,username);
-        if(authResponse.isSuccess()){
+        AuthResponse authResponse = authService.setUsername(email, username);
+        if (authResponse.isSuccess()) {
             return ResponseEntity.ok(authResponse);
         }
         // Distinguish between user not found and username taken
