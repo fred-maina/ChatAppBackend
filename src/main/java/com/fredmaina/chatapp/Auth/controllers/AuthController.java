@@ -2,15 +2,21 @@ package com.fredmaina.chatapp.Auth.controllers;
 
 
 import com.fredmaina.chatapp.Auth.Dtos.*;
+import com.fredmaina.chatapp.Auth.Models.RefreshToken;
 import com.fredmaina.chatapp.Auth.Models.User;
+import com.fredmaina.chatapp.Auth.Repositories.RefreshRepository;
 import com.fredmaina.chatapp.Auth.Repositories.UserRepository;
 import com.fredmaina.chatapp.Auth.services.AuthService;
 import com.fredmaina.chatapp.Auth.services.JWTService;
+import com.fredmaina.chatapp.Auth.services.RefreshTokenService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,16 +34,33 @@ public class AuthController {
     @Autowired
     UserRepository userRepository;
 
+    @Autowired
+    RefreshRepository refreshTokenRepository;
+
+    @Autowired
+    RefreshTokenService refreshTokenService;
+
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest loginRequest) {
         AuthResponse authResponse = authService.login(loginRequest);
         if(authResponse.isSuccess()){
-            return ResponseEntity.ok(authResponse);
+            ResponseCookie cookie = ResponseCookie.from("refreshToken", authResponse.getRefreshToken())
+                    .httpOnly(true)
+                    .secure(true)
+                    .sameSite("Strict")
+                    .path("/api/auth/refresh")
+                    .maxAge(7 * 24 * 60 * 60)
+                    .build();
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                    .body(authResponse);
         }
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(authResponse);
 
     }
+
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody SignUpRequest signUpRequest) {
@@ -127,5 +150,42 @@ public class AuthController {
                     "message", "Error checking username"
             ));
         }
+    }
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refresh(@CookieValue("refreshToken") String refreshToken) {
+
+        RefreshToken rt = refreshTokenRepository.findByToken(refreshToken)
+                .orElseThrow(() -> new RuntimeException("Invalid refresh token"));
+
+        refreshTokenService.verifyExpiration(rt);
+
+        String newAccessToken = jwtService.generateToken(rt.getUser().getEmail());
+
+        return ResponseEntity.ok(
+                AuthResponse.builder()
+                        .success(true)
+                        .message("Token refreshed")
+                        .token(newAccessToken)
+                        .refreshToken(refreshToken)
+                        .user(rt.getUser())
+                        .build()
+        );
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(@AuthenticationPrincipal User user) {
+
+        refreshTokenService.deleteByUser(user);
+
+        ResponseCookie cookie = ResponseCookie.from("refreshToken", "")
+                .httpOnly(true)
+                .secure(true)
+                .path("/")
+                .maxAge(0)
+                .build();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body("Logged out");
     }
 }
