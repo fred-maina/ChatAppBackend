@@ -55,7 +55,7 @@ public class ChatService {
                         .lastMessage(lastMsg.getContent())
                         .lastMessageTimestamp(lastMsg.getTimestamp()) // This will now be Instant
                         .unreadCount((int) unreadCount)
-                        .avatarUrl("https://i.pravatar.cc/150?u=" + sessionId) // Placeholder
+                        .avatarUrl("https://i.pravatar.cc/150?u=" + sessionId)
                         .messages(
                                 allMessagesInSession.stream()
                                         .map(msg -> ChatMessageMapper.toDto(msg, userId))

@@ -64,7 +64,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                 for (String part : parts) {
                     String[] keyValue = part.trim().split("=");
                     if (keyValue.length == 2 && keyValue[0].equals("anonSessionId")) {
-                        log.info("extracted from cookies");
+                        log.debug("extracted from cookies");
                     }
                 }
             }
@@ -139,7 +139,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                     for (String part : parts) {
                         String[] keyValue = part.trim().split("=");
                         if (keyValue.length == 2 && keyValue[0].equals("anonSessionId")) {
-                            log.info("extracted form cookies");
+                            log.debug("extracted from cookies");
                             return keyValue[1];
                         }
                     }
@@ -152,7 +152,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                 for (String param : queryParams) {
                     String[] keyValue = param.split("=");
                     if (keyValue.length == 2 && keyValue[0].equals("anonSessionId")) {
-                        log.info("extracted from  URI");
+                        log.debug("extracted from URI");
                         return keyValue[1];
                     }
                 }
