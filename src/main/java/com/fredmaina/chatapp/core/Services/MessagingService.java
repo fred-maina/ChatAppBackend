@@ -135,7 +135,6 @@ public class MessagingService {
         chatMessageRepository.markMessagesAsRead(sessionId);
     }
 
-    // For RedisSubscriber to call
     public void deliverToSession(String to, String json, boolean isUser) {
         WebSocketSession session = isUser
                 ? userSessions.get(to)

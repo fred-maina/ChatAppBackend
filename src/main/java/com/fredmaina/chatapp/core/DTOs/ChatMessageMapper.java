@@ -16,7 +16,7 @@ public class ChatMessageMapper {
                 .id(msg.getMessageId().toString())
                 .text(msg.getContent())
                 .senderType(isFromCurrentUser ? "self" : "anonymous")
-                .timestamp(formattedTimestamp) // Use formattedTimestamp
+                .timestamp(formattedTimestamp)
                 .nickname(isFromCurrentUser ? null : msg.getNickname())
                 .build();
     }

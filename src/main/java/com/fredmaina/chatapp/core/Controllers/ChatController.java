@@ -15,12 +15,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.*; // Added DeleteMapping
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID; // For UUID
+import java.util.UUID;
 
 @Slf4j
 @Controller
@@ -29,7 +29,7 @@ public class ChatController {
     @Autowired
     private ChatService chatService;
     @Autowired
-    private JWTService jwtService; // Corrected case from jWTService
+    private JWTService jwtService;
     @Autowired
     private UserRepository userRepository;
     @Autowired
@@ -63,7 +63,7 @@ public class ChatController {
     @GetMapping("/chat/session_history")
     public ResponseEntity<?> getAnonChatHistory(
             @RequestParam String sessionId,
-            @RequestParam String recipient // This is the username of the dashboard owner
+            @RequestParam String recipient
     ) {
         ;
         List<ChatMessageDto> messages = chatService.getChatHistoryForAnonymous(sessionId, recipient);

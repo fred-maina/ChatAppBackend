@@ -54,7 +54,7 @@ public class JWTService {
     }
     public String getClaimFromToken(String token, String claimKey) {
         Claims claims = getClaimsFromToken(token);
-        return claims.get(claimKey, String.class); // Get claim by key
+        return claims.get(claimKey, String.class);
     }
 
     public boolean isTokenValid(String token) {

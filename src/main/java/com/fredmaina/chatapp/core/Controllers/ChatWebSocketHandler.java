@@ -108,7 +108,6 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    // Helper to extract JWT from query params
     private String extractUsernameFromJWT(WebSocketSession session) {
         try {
             URI uri = session.getUri();
@@ -128,10 +127,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         return null;
     }
 
-    // Helper to extract session ID from cookies
     private String extractAnonSessionId(WebSocketSession session) {
         try {
-            // Try to get from cookies
             List<String> cookies = session.getHandshakeHeaders().get("cookie");
             if (cookies != null) {
                 for (String header : cookies) {
@@ -145,7 +142,6 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                     }
                 }
             }
-            // Fallback: Try to get from URI query param
             URI uri = session.getUri();
             if (uri != null && uri.getQuery() != null) {
                 String[] queryParams = uri.getQuery().split("&");

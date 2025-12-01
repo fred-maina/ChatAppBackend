@@ -53,7 +53,7 @@ public class ChatService {
                         .id(sessionId)
                         .senderNickname(senderNickname)
                         .lastMessage(lastMsg.getContent())
-                        .lastMessageTimestamp(lastMsg.getTimestamp()) // This will now be Instant
+                        .lastMessageTimestamp(lastMsg.getTimestamp())
                         .unreadCount((int) unreadCount)
                         .avatarUrl("https://i.pravatar.cc/150?u=" + sessionId)
                         .messages(
@@ -66,7 +66,6 @@ public class ChatService {
             }
         }
 
-        // Sort sessions by lastMessageTimestamp descending
         sessions.sort(Comparator.comparing(ChatSessionDto::getLastMessageTimestamp, Comparator.nullsLast(Comparator.reverseOrder())));
 
         return sessions;

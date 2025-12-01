@@ -15,9 +15,9 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @ToString
 public class WebSocketMessagePayload {
-    private MessageType type; // e.g., "ANON_TO_USER" or "USER_TO_ANON"
-    private String from; // username or sessionId
-    private String to;   // username or sessionId
+    private MessageType type;
+    private String from;
+    private String to;
     private String content;
     private String nickname;
     private String timestamp;
