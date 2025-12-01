@@ -13,9 +13,10 @@ public class AuthResponse {
     private String message;
     private User user;
     private String token;
+    private String refreshToken;
 
 
-    public AuthResponse(boolean success, String message, User user, String token) {
+    public AuthResponse(boolean success, String message, User user, String token, String refreshToken) {
         this.success = success;
         this.message = message;
         this.user = user;
