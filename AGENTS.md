@@ -1,201 +1,61 @@
 # AGENTS.md
 
-## About This File
+A guide for AI coding agents working on this repository.
 
-This file defines custom AI agents for GitHub Copilot Workspace and other AI-powered development tools. It enables specialized agents with domain-specific knowledge to assist with different aspects of development in this repository.
+## Setup commands
+- Install dependencies: `mvn clean install`
+- Start dev server: `mvn spring-boot:run`
+- Run tests: `mvn test`
+- Generate coverage report: `mvn verify`
 
-**Purpose**: Custom agents provide targeted expertise for specific tasks (e.g., Spring Boot configuration, database migrations, security) rather than general coding assistance. This improves code quality, maintains consistency with repository conventions, and accelerates development.
-
-**Location**: This file should be placed in the **root directory** of the repository to be automatically discovered by AI development tools.
-
----
-
-## Custom Agents for ChatApp Backend
-
-### Spring Boot Expert
-
-**When to use**: Working with Spring Boot configurations, dependency injection, or Spring-specific patterns
-
-**Specialization**:
-- Spring Boot 3.5.0 application architecture
-- Spring Security configuration for JWT and OAuth 2.0
-- Spring Data JPA repositories and entity management
-- Spring WebSocket configuration and handlers
-- Spring Boot Actuator and monitoring setup
-- Dependency injection patterns and best practices
-
-**Repository Context**:
-- Java 21 with Spring Boot 3.5.0
-- Spring Security with JWT and Google OAuth 2.0
-- Spring Data JPA with PostgreSQL
+## Tech stack
+- Java 21
+- Spring Boot 3.5.0
+- PostgreSQL with Flyway migrations
+- Spring Security with JWT and OAuth 2.0
 - Spring WebSocket for real-time messaging
-- Spring Boot Actuator with Prometheus metrics
-- Redis caching with Spring Data Redis
+- Redis for caching
+- Maven for build management
 
----
+## Code style
+- Use Lombok annotations (`@Slf4j`, `@Data`, `@Builder`) to reduce boilerplate
+- Follow Spring Boot best practices and conventions
+- Use constructor injection for dependencies
+- Use `@Valid` annotation for request body validation
+- Log important operations using SLF4J
 
-### Database Migration Expert
+## Project structure
+- `src/main/java/com/fredmaina/chatapp/Auth/` - Authentication module (lowercase `controllers/`, `services/` but capitalized `Dtos/`, `Models/`, `Repositories/`)
+- `src/main/java/com/fredmaina/chatapp/core/` - Core chat functionality (capitalized `Controllers/`, `Services/`, `DTOs/`)
+- `src/main/resources/db/migration/` - Flyway database migrations
+- `src/test/java/` - Test files
 
-**When to use**: Working with database schema changes, migrations, or data persistence
-
-**Specialization**:
-- Flyway migration scripts
-- PostgreSQL database schema design
-- JPA entity relationships and mappings
-- Database indexing and optimization
-- Transaction management
-
-**Repository Context**:
-- Migrations location: `src/main/resources/db/migration/`
-- Naming convention: `V{number}__{description}.sql`
+## Database migrations
+- Location: `src/main/resources/db/migration/`
+- Naming: `V{number}__{description}.sql` (e.g., `V1__create_users_table.sql`)
 - Never modify existing migration files
 - Always create new migrations for schema changes
-- Database: PostgreSQL with JPA entities
 
----
+## API conventions
+- Auth endpoints: `/api/auth`
+- Chat endpoints: `/api`
+- Return `ResponseEntity<T>` with appropriate HTTP status codes
+- Use standard status codes: 200 OK, 201 Created, 401 Unauthorized, 409 Conflict
 
-### WebSocket & Real-time Communication Expert
-
-**When to use**: Working with WebSocket connections, real-time messaging, or chat functionality
-
-**Specialization**:
-- Spring WebSocket configuration
-- WebSocket handler implementation
-- Real-time message routing
-- Session management for authenticated and anonymous users
-- Message payload serialization/deserialization
-
-**Repository Context**:
-- WebSocket endpoint: `/ws/chat`
+## WebSocket
+- Endpoint: `/ws/chat`
 - Authenticated users: JWT token as query parameter (`?token=<JWT>`)
 - Anonymous users: Session ID in cookie
 - Message types: `ANON_TO_USER`, `USER_TO_ANON`, `MARK_AS_READ`
-- Bidirectional communication between registered and anonymous users
 
----
-
-### Security & Authentication Expert
-
-**When to use**: Working with authentication, authorization, or security configurations
-
-**Specialization**:
-- JWT token generation and validation
-- Google OAuth 2.0 integration
-- Spring Security configuration
-- CORS configuration
-- Endpoint security and access control
-- Password encryption and validation
-
-**Repository Context**:
-- JWT-based authentication for API endpoints
+## Security
+- JWT authentication for API endpoints
 - Google OAuth 2.0 for social login
-- Separate security for WebSocket connections
-- Environment variables for sensitive configuration
-- Auth base path: `/api/auth`
+- Store sensitive config in environment variables (`JWT_SECRET`, `GOOGLE_CLIENT-ID`, etc.)
+- Always validate and sanitize user input
 
----
-
-### Testing & Quality Assurance Expert
-
-**When to use**: Writing or fixing tests, or ensuring code quality
-
-**Specialization**:
-- JUnit 5 test patterns
-- Spring Boot Test configurations
-- Mocking with Mockito
-- Integration testing
-- JaCoCo code coverage analysis
-- Test-driven development practices
-
-**Repository Context**:
-- Test location: `src/test/java/com/fredmaina/chatapp/`
-- Use Spring Boot Test annotations
-- Follow patterns in `AuthServiceTest.java`
-- Generate coverage: `mvn verify`
-- Mock dependencies appropriately
-
----
-
-### REST API Design Expert
-
-**When to use**: Designing or implementing REST endpoints
-
-**Specialization**:
-- RESTful API design principles
-- Spring MVC controller patterns
-- Request/Response DTO design
-- HTTP status code usage
-- API documentation
-- Validation with Bean Validation
-
-**Repository Context**:
-- Base paths: `/api/auth` for auth, `/api` for chat
-- Return `ResponseEntity<T>` with appropriate status codes
-- Use `@Valid` for request validation
-- HTTP status codes:
-  - 200 OK for successful GET
-  - 201 Created for successful POST
-  - 401 Unauthorized for auth failures
-  - 409 Conflict for duplicates
-- Lombok DTOs in `Dtos/` or `DTOs/` directories
-
----
-
-### Maven & Build Expert
-
-**When to use**: Working with dependencies, build configuration, or project structure
-
-**Specialization**:
-- Maven POM configuration
-- Dependency management
-- Maven plugins (JaCoCo, Maven Compiler)
-- Build lifecycle and phases
-- Spring Boot Maven plugin
-
-**Repository Context**:
-- Build: `mvn clean install`
-- Run: `mvn spring-boot:run`
-- Test: `mvn test`
-- Coverage: `mvn verify`
-- Java 21 with Spring Boot 3.5.0
-- Key dependencies: Lombok, Jackson, Flyway, JJWT
-
----
-
-### Code Review Expert
-
-**When to use**: Reviewing code changes or ensuring code quality
-
-**Specialization**:
-- Java coding standards
-- Spring Boot best practices
-- Security vulnerability detection
-- Performance optimization
-- Code maintainability
-- Logging and error handling
-
-**Repository Context**:
-- Use Lombok annotations (`@Slf4j`, `@Data`, `@Builder`)
-- Follow existing naming conventions per module
-- Consistent error handling with global exception handlers
-- Proper transaction management
-- Environment-based configuration
-
----
-
-## How to Use These Agents
-
-When working with AI development tools that support custom agents:
-
-1. **Agent Selection**: The tool automatically selects the appropriate agent based on your task
-2. **Context Awareness**: Agents have repository-specific knowledge to provide relevant suggestions
-3. **Consistency**: Agents help maintain coding standards and architectural patterns
-4. **Efficiency**: Get specialized help without explaining repository context each time
-
-## Maintenance
-
-Keep this file updated when:
-- Adding new major features or technologies
-- Changing architectural patterns
-- Updating build or test processes
-- Modifying security or authentication approaches
+## Testing
+- Tests in: `src/test/java/com/fredmaina/chatapp/`
+- Use JUnit 5 and Spring Boot Test annotations
+- Mock dependencies with Mockito
+- Follow existing patterns in `AuthServiceTest.java`
