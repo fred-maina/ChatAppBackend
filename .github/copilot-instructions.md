@@ -138,8 +138,8 @@ Configuration is in `src/main/resources/application.properties`. Use environment
 
 **Required**:
 - `JWT_SECRET` - Secret key for JWT signing
-- `GOOGLE_CLIENT-ID` - Google OAuth client ID
-- `GOOGLE_SECRET-ID` - Google OAuth client secret
+- `GOOGLE_CLIENT_ID` - Google OAuth client ID
+- `GOOGLE_SECRET_ID` - Google OAuth client secret
 - `GOOGLE_REDIRECT_URI` - OAuth redirect URI
 
 **Optional**:

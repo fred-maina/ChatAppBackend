@@ -51,7 +51,7 @@ A guide for AI coding agents working on this repository.
 ## Security
 - JWT authentication for API endpoints
 - Google OAuth 2.0 for social login
-- Store sensitive config in environment variables (`JWT_SECRET`, `GOOGLE_CLIENT-ID`, etc.)
+- Store sensitive config in environment variables (`JWT_SECRET`, `GOOGLE_CLIENT_ID`, etc.)
 - Always validate and sanitize user input
 
 ## Testing
