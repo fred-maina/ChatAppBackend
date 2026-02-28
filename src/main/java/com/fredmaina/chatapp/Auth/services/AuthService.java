@@ -2,7 +2,6 @@ package com.fredmaina.chatapp.Auth.services;
 
 
 import com.fredmaina.chatapp.Auth.Dtos.AuthResponse;
-import com.fredmaina.chatapp.Auth.Dtos.GoogleOAuthRequest;
 import com.fredmaina.chatapp.Auth.Dtos.LoginRequest;
 import com.fredmaina.chatapp.Auth.Dtos.SignUpRequest;
 import com.fredmaina.chatapp.Auth.Models.Role;
@@ -12,17 +11,14 @@ import com.fredmaina.chatapp.Auth.configs.GoogleOAuthProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.*;
-import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -148,14 +144,14 @@ public class AuthService {
             params.add("redirect_uri", redirectUri);
             params.add("grant_type", "authorization_code");
 
-            log.info("Sending token request with params: {}", params);
+            log.debug("Sending token request with params: {}", params);
 
             HttpEntity<MultiValueMap<String, String>> tokenRequest = new HttpEntity<>(params, headers);
 
             ResponseEntity<Map> tokenResponse = restTemplate.postForEntity(
                     "https://oauth2.googleapis.com/token", tokenRequest, Map.class);
 
-            log.info("Token response status: {}", tokenResponse.getStatusCode());
+            log.debug("Token response status: {}", tokenResponse.getStatusCode());
             log.debug("Token response body: {}", tokenResponse.getBody());
 
             if (tokenResponse.getStatusCode() != HttpStatus.OK || tokenResponse.getBody() == null) {
@@ -170,11 +166,11 @@ public class AuthService {
             }
 
             String tokenInfoUrl = "https://oauth2.googleapis.com/tokeninfo?id_token=" + idToken;
-            log.info("Validating id_token via: {}", tokenInfoUrl);
+            log.debug("Validating id_token via: {}", tokenInfoUrl);
 
             ResponseEntity<Map> tokenInfo = restTemplate.getForEntity(tokenInfoUrl, Map.class);
 
-            log.info("Token info response status: {}", tokenInfo.getStatusCode());
+            log.debug("Token info response status: {}", tokenInfo.getStatusCode());
             log.debug("Token info response body: {}", tokenInfo.getBody());
 
             if (tokenInfo.getStatusCode() != HttpStatus.OK || tokenInfo.getBody() == null) {
@@ -182,19 +178,16 @@ public class AuthService {
                 return new AuthResponse(false, "OAuth failed: Invalid token info", null, null);
             }
 
-            Map body = tokenInfo.getBody();
+            Map<String, String> body = tokenInfo.getBody();
+            String email = body.get("email");
 
-            assert body != null;
-            String email = (String) body.get("email");
-            String firstName = (String) body.get("given_name");
-            String lastName = (String) body.get("family_name");
-
-            Optional<User> existingUser = userRepository.findByEmail(email);
-            User user = existingUser.orElseGet(() -> {
+            User user = userRepository.findByEmail(email).orElseGet(() -> {
+                log.debug("Creating new user for Google OAuth: {}", email);
                 User newUser = new User();
                 newUser.setEmail(email);
-                newUser.setFirstName(firstName);
-                newUser.setLastName(lastName);
+                newUser.setFirstName(body.get("given_name"));
+                newUser.setLastName(body.get("family_name"));
+                newUser.setUsername(email);
                 newUser.setVerified(true);
                 newUser.setRole(Role.USER);
                 return userRepository.save(newUser);
@@ -202,63 +195,16 @@ public class AuthService {
 
             String token = jwtService.generateToken(user.getEmail());
 
-            return AuthResponse.builder()
-                    .success(true)
-                    .message("OAuth login successful")
-                    .token(token)
-                    .user(user)
-                    .build();
+            AuthResponse response = new AuthResponse();
+            response.setSuccess(true);
+            response.setMessage("Google login successful");
+            response.setUser(user);
+            response.setToken(token);
+            return response;
 
         } catch (Exception e) {
-            log.error("OAuth failed: {}", e.getMessage(), e);
-            return AuthResponse.builder()
-                    .success(false)
-                    .message("OAuth failed: " + e.getMessage())
-                    .build();
+            log.error("Unexpected error during Google OAuth: {}", e.getMessage(), e);
+            return new AuthResponse(false, "An unexpected error occurred during Google sign-in.", null, null);
         }
     }
-
-    @CacheEvict(value = "usernameCheck", key = "#username.toLowerCase()")
-    public AuthResponse setUsername(String email, String username) {
-        Optional<User> userByUsername = userRepository.findByUsernameIgnoreCase(username);
-        if (userByUsername.isPresent() && !userByUsername.get().getEmail().equalsIgnoreCase(email)) {
-            return AuthResponse.builder()
-                    .message("Username already taken (case-insensitive)")
-                    .success(false)
-                    .build();
-        }
-
-        Optional<User> existingUserByEmail = userRepository.findByEmail(email);
-        if (existingUserByEmail.isPresent()) {
-            User user = existingUserByEmail.get();
-            user.setUsername(username);
-            try {
-                userRepository.save(user);
-                return AuthResponse.builder()
-                        .success(true)
-                        .user(user)
-                        .message("Username set successfully")
-                        .build();
-            } catch (DataIntegrityViolationException e) {
-
-                log.error("Data integrity violation while setting username for email {}: {}", email, e.getMessage());
-                return AuthResponse.builder()
-                        .message("Username already taken or another data issue occurred.")
-                        .success(false)
-                        .build();
-            }
-        }
-        return AuthResponse.builder()
-                .message("Invalid email, user not found.")
-                .success(false)
-                .build();
-    }
-    @Cacheable(value = "usernameCheck", key = "#username != null ? #username.toLowerCase() : 'null'")
-    public Boolean checkUsernameExists(String username) {
-        log.info("checking if username: {} exists",username);
-        if (username == null) return false;
-        return userRepository.existsByUsernameIgnoreCase(username);
-    }
-
-
 }
