@@ -226,12 +226,20 @@ public class AuthService {
         if (existingUserByEmail.isPresent()) {
             User user = existingUserByEmail.get();
             user.setUsername(username);
-            userRepository.save(user);
-            return AuthResponse.builder()
-                    .success(true)
-                    .user(user)
-                    .message("Username set successfully")
-                    .build();
+            try {
+                userRepository.save(user);
+                return AuthResponse.builder()
+                        .success(true)
+                        .user(user)
+                        .message("Username set successfully")
+                        .build();
+            } catch (DataIntegrityViolationException e) {
+                log.error("Data integrity violation while setting username for email {}: {}", email, e.getMessage());
+                return AuthResponse.builder()
+                        .message("Username already taken or another data issue occurred.")
+                        .success(false)
+                        .build();
+            }
         }
         return AuthResponse.builder()
                 .message("Invalid email, user not found.")
