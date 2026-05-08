@@ -4,7 +4,7 @@ import com.fredmaina.chatapp.Auth.Models.User;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.Instant; // Changed from LocalDateTime
+import java.time.Instant;
 import java.util.UUID;
 
 @Entity
@@ -22,22 +22,22 @@ public class ChatMessage {
 
     private String content;
 
-    private String fromSessionId;  // nullable: only set if it's from anonymous
+    private String fromSessionId;
 
-    private String toSessionId;    // nullable: only set if it's to anonymous
+    private String toSessionId;
 
-    private String nickname;       // optional: only needed if from anonymous
+    private String nickname;
 
-    private Instant timestamp; // Changed to Instant
+    private Instant timestamp;
 
     @ManyToOne
     @JoinColumn(name = "from_user_id")
-    private User fromUser;         // nullable: only set if it's from a user
+    private User fromUser;
 
     @ManyToOne
     @JoinColumn(name = "to_user_id")
-    private User toUser;           // nullable: only set if it's to a user
+    private User toUser;
 
     @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
-    private boolean isRead = false; // New field, defaults to false
+    private boolean isRead = false;
 }
