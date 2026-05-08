@@ -135,6 +135,26 @@ ensure_container() {
     "${POSTGRES_IMAGE}" >/dev/null
 }
 
+wait_for_postgres() {
+  local max_attempts="${POSTGRES_READY_MAX_ATTEMPTS:-30}"
+  local sleep_seconds="${POSTGRES_READY_SLEEP_SECONDS:-2}"
+  local attempt=1
+
+  echo "Waiting for PostgreSQL to accept connections..."
+  while [[ "${attempt}" -le "${max_attempts}" ]]; do
+    if run_sudo docker exec "${APP_POSTGRES_CONTAINER}" pg_isready -U "${DB_USERNAME}" -d "${DB_NAME}" >/dev/null 2>&1; then
+      echo "PostgreSQL is ready."
+      return
+    fi
+
+    sleep "${sleep_seconds}"
+    attempt=$((attempt + 1))
+  done
+
+  echo "ERROR: PostgreSQL did not become ready in time." >&2
+  exit 1
+}
+
 if ! package_installed openssl; then
   run_sudo apt-get update
   run_sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y openssl
@@ -147,5 +167,6 @@ ensure_docker_running
 ensure_volume
 write_env_file "${DB_PASSWORD}"
 ensure_container "${DB_PASSWORD}"
+wait_for_postgres
 
 echo "Local PostgreSQL setup complete. Credentials are stored in ${APP_ENV_FILE}."

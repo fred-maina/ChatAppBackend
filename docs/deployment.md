@@ -32,7 +32,7 @@ Configure these secrets in the GitHub repository before using the deployment wor
 | `EC2_SSH_PRIVATE_KEY` | Private SSH key that can log in as `EC2_USER`. Do not commit this key. |
 | `DOMAIN_NAME` | Public domain that points to the EC2 instance, for example `api.example.com`. Use the hostname only; do not include `http://` or `https://`. |
 | `CERTBOT_EMAIL` | Email used by Certbot for Let's Encrypt registration and renewal notices. |
-| `APP_PORT` | Optional local app port. Use `8080`; if omitted in the workflow, it defaults to `8080`. |
+| `APP_PORT` | Not required. The workflow pins the app to `8080` so Spring Boot and actuator health checks use the same port. |
 
 Optional database secrets:
 
@@ -74,6 +74,16 @@ GOOGLE_REDIRECT_URI=...
 Deployment validates this file before restarting the app. If any required key is missing or empty, the workflow fails before starting the service and prints only the missing key names, not secret values.
 
 Do not commit private keys, database passwords, JWT secrets, OAuth secrets, or Redis passwords.
+
+`EC2_SSH_PRIVATE_KEY` must contain the full private key, including the header and footer lines:
+
+```text
+-----BEGIN OPENSSH PRIVATE KEY-----
+...
+-----END OPENSSH PRIVATE KEY-----
+```
+
+The workflow also accepts the old secret name `EC2_SSH_KEY` as a fallback, but `EC2_SSH_PRIVATE_KEY` is the preferred name.
 
 Database connection values are written by deployment to:
 
@@ -187,6 +197,7 @@ Local PostgreSQL mode is used when any required database secret is missing. In t
 - Generates a secure password with `openssl rand -hex 32` when no existing local password is present.
 - Stores local DB config in `/opt/myapp/.env`.
 - Starts the existing container if it is stopped.
+- Waits for PostgreSQL readiness with `pg_isready` before the deployment starts the app.
 
 The local PostgreSQL volume preserves database data across deployments and container restarts.
 
@@ -220,7 +231,9 @@ Local Redis mode is used when any required Redis secret is missing. In this mode
 - Binds Redis to `127.0.0.1:6379`.
 - Generates a secure password with `openssl rand -hex 32` when no existing local password is present.
 - Stores local Redis config in `/opt/myapp/redis.env`.
+- Stores Redis server auth config in `/opt/myapp/redis.conf` and mounts it into the container, so the password is not placed in the Docker command line.
 - Starts the existing container if it is stopped.
+- Waits for Redis readiness with `redis-cli ping` before the deployment starts the app.
 
 Run the local Redis setup manually:
 
@@ -264,6 +277,7 @@ The Redis setup script is also safe to run during every deployment:
 - It reuses existing credentials from `/opt/myapp/redis.env`.
 - It does not regenerate the local Redis password when one already exists.
 - It binds Redis to `127.0.0.1`, not a public interface.
+- It recreates only the Redis container, not the data volume, if an older container exposed the password in Docker command arguments.
 
 Flyway migrations run automatically when the Spring Boot app starts. Hibernate schema validation is enabled with `spring.jpa.hibernate.ddl-auto=validate`, so the app fails startup if the schema created by migrations no longer matches the entity models.
 
@@ -459,7 +473,6 @@ CERTBOT_EMAIL
 Optional GitHub repository secrets:
 
 ```text
-APP_PORT
 DB_HOST
 DB_PORT
 DB_NAME
