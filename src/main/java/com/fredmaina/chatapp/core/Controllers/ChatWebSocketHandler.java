@@ -3,12 +3,11 @@ package com.fredmaina.chatapp.core.Controllers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fredmaina.chatapp.Auth.Models.User;
 import com.fredmaina.chatapp.Auth.Repositories.UserRepository;
-import com.fredmaina.chatapp.Auth.services.JWTService;
+import com.fredmaina.chatapp.Auth.services.WebSocketTicketService;
 import com.fredmaina.chatapp.core.DTOs.WebSocketMessagePayload;
 import com.fredmaina.chatapp.core.Services.MessagingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -28,29 +27,35 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
     private final MessagingService messagingService;
 
-    private final JWTService jwtService;
+    private final WebSocketTicketService webSocketTicketService;
 
     private final Map<String, WebSocketSession> userSessions = new ConcurrentHashMap<>();
     private final Map<String, WebSocketSession> anonymousSessions = new ConcurrentHashMap<>();
 
+    // Store the authenticated email for each session (for message handling)
+    private final Map<String, String> sessionEmailMap = new ConcurrentHashMap<>();
+
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final  UserRepository userRepository;
+    private final UserRepository userRepository;
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
-        String email = extractUsernameFromJWT(session);
+        String email = extractUserFromTicket(session);
         String anonId = extractAnonSessionId(session);
-        Optional<String> userName = userRepository.findByEmail(email).map(User::getUsername);
+        Optional<String> userName = email != null 
+                ? userRepository.findByEmail(email).map(User::getUsername)
+                : Optional.empty();
 
         if (userName.isPresent()) {
-            String user =userName.get();
+            String user = userName.get();
             userSessions.put(user, session);
-            log.info("Authenticated user connected: {}, with nickname: {}", email,user);
+            sessionEmailMap.put(session.getId(), email);
+            log.info("Authenticated user connected: {}, with nickname: {}", email, user);
         } else if (anonId != null) {
             anonymousSessions.put(anonId, session);
             log.info("Anonymous user connected: {}", anonId);
         } else {
-            log.warn("Connection rejected: No valid token or session cookie.");
+            log.warn("Connection rejected: No valid ticket or session cookie.");
             try {
                 session.close();
             } catch (Exception ignored) {}
@@ -78,7 +83,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         userSessions.values().remove(session);
         anonymousSessions.values().remove(session);
-        log.info("Connection closed: {}, reason: {}", session.getId(),status.getReason());
+        sessionEmailMap.remove(session.getId());
+        log.info("Connection closed: {}, reason: {}", session.getId(), status.getReason());
     }
 
     @Override
@@ -94,10 +100,10 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                 }
             }
             case USER_TO_ANON -> {
-                String username = extractUsernameFromJWT(session);
-                if (username != null) {
+                String email = sessionEmailMap.get(session.getId());
+                if (email != null) {
                     log.info(payload.toString());
-                    messagingService.sendMessageFromUser(username, payload.getTo(), payload.getContent());
+                    messagingService.sendMessageFromUser(email, payload.getTo(), payload.getContent());
                 }
             }
             case MARK_AS_READ -> {
@@ -108,30 +114,37 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    // Helper to extract JWT from query params
-    private String extractUsernameFromJWT(WebSocketSession session) {
+    /**
+     * Extracts user email from a one-time-use WebSocket ticket.
+     * The ticket is validated and immediately consumed (evicted from cache)
+     * to prevent reuse.
+     */
+    private String extractUserFromTicket(WebSocketSession session) {
         try {
             URI uri = session.getUri();
             if (uri != null && uri.getQuery() != null) {
                 String[] pairs = uri.getQuery().split("&");
                 for (String pair : pairs) {
                     String[] keyValue = pair.split("=");
-                    if (keyValue.length == 2 && keyValue[0].equals("token")) {
-                        String token = URLDecoder.decode(keyValue[1], StandardCharsets.UTF_8);
-                        return jwtService.getUsernameFromToken(token);
+                    if (keyValue.length == 2 && keyValue[0].equals("ticket")) {
+                        String ticket = URLDecoder.decode(keyValue[1], StandardCharsets.UTF_8);
+                        return webSocketTicketService.validateAndConsumeTicket(ticket);
                     }
                 }
             }
         } catch (Exception e) {
-            log.warn("JWT extraction failed: {}", e.getMessage());
+            log.warn("Ticket extraction failed: {}", e.getMessage());
         }
         return null;
     }
 
-    // Helper to extract session ID from cookies
+    /**
+     * Extracts anonymous session ID from cookies only.
+     * Query parameter fallback has been removed for security reasons.
+     */
     private String extractAnonSessionId(WebSocketSession session) {
         try {
-            // Try to get from cookies
+            // Get from cookies only (query param fallback removed for security)
             List<String> cookies = session.getHandshakeHeaders().get("cookie");
             if (cookies != null) {
                 for (String header : cookies) {
@@ -139,25 +152,12 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                     for (String part : parts) {
                         String[] keyValue = part.trim().split("=");
                         if (keyValue.length == 2 && keyValue[0].equals("anonSessionId")) {
-                            log.info("extracted form cookies");
+                            log.info("extracted from cookies");
                             return keyValue[1];
                         }
                     }
                 }
             }
-            // Fallback: Try to get from URI query param
-            URI uri = session.getUri();
-            if (uri != null && uri.getQuery() != null) {
-                String[] queryParams = uri.getQuery().split("&");
-                for (String param : queryParams) {
-                    String[] keyValue = param.split("=");
-                    if (keyValue.length == 2 && keyValue[0].equals("anonSessionId")) {
-                        log.info("extracted from  URI");
-                        return keyValue[1];
-                    }
-                }
-            }
-
         } catch (Exception e) {
             log.warn("Anon session extraction failed: {}", e.getMessage());
         }
