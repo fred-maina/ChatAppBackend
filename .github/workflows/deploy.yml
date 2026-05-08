@@ -97,12 +97,22 @@ jobs:
           script_stop: true
           script: |
             set -euo pipefail
+            CURRENT_STEP="initializing deployment"
 
+            log_step() {
+              CURRENT_STEP="$1"
+              echo "==> ${CURRENT_STEP}"
+            }
+
+            trap 'echo "ERROR: deployment failed during: ${CURRENT_STEP}" >&2' ERR
+
+            log_step "preparing deployment directory"
             mkdir -p "${APP_DIR}"
             chmod +x "${APP_DIR}/setup_nginx.sh" "${APP_DIR}/setup_postgres.sh" "${APP_DIR}/setup_redis.sh" "${APP_DIR}/check_app_health.sh"
             REMOTE_USER="$(id -un)"
             APP_SECRETS_FILE="${APP_DIR}/.env"
 
+            log_step "validating domain name"
             if [[ "${DOMAIN_NAME}" == http://* || "${DOMAIN_NAME}" == https://* || "${DOMAIN_NAME}" == */* ]]; then
               echo "DOMAIN_NAME must be a hostname only, for example chat.fredmaina.com. Do not include http:// or https://."
               exit 1
@@ -151,11 +161,13 @@ jobs:
               echo "Validated required environment variables in ${file_path}."
             }
 
+            log_step "checking Java runtime"
             if ! dpkg-query -W -f='${Status}' openjdk-21-jre-headless 2>/dev/null | grep -q "install ok installed"; then
               sudo apt-get update
-              sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y openjdk-21-jre-headless
+              sudo env NEEDRESTART_MODE=a DEBIAN_FRONTEND=noninteractive apt-get install -y openjdk-21-jre-headless
             fi
 
+            log_step "configuring PostgreSQL"
             if [[ -n "${DB_HOST:-}" && -n "${DB_PORT:-}" && -n "${DB_NAME:-}" && -n "${DB_USERNAME:-}" && -n "${DB_PASSWORD:-}" ]]; then
               sudo mkdir -p "${APP_CONFIG_DIR}"
               sudo tee "${APP_ENV_FILE}" >/dev/null <<DBENV
@@ -181,6 +193,7 @@ jobs:
                 bash "${APP_DIR}/setup_postgres.sh"
             fi
 
+            log_step "configuring Redis"
             if [[ -n "${REDIS_HOST:-}" && -n "${REDIS_PORT:-}" && -n "${REDIS_PASSWORD:-}" ]]; then
               sudo mkdir -p "${APP_CONFIG_DIR}"
               sudo tee "${REDIS_ENV_FILE}" >/dev/null <<REDISENV
@@ -199,22 +212,26 @@ jobs:
                 bash "${APP_DIR}/setup_redis.sh"
             fi
 
+            log_step "validating server app environment"
             require_env_keys "${APP_SECRETS_FILE}" \
               JWT_SECRET \
               GOOGLE_CLIENT_ID \
               GOOGLE_SECRET_ID \
               GOOGLE_REDIRECT_URI
 
+            log_step "validating datasource environment"
             require_env_keys "${APP_ENV_FILE}" \
               SPRING_DATASOURCE_URL \
               SPRING_DATASOURCE_USERNAME \
               SPRING_DATASOURCE_PASSWORD
 
+            log_step "validating Redis environment"
             require_env_keys "${REDIS_ENV_FILE}" \
               REDIS_HOST \
               REDIS_PORT \
               REDIS_PASSWORD
 
+            log_step "writing systemd service"
             sudo tee /etc/systemd/system/${APP_NAME}.service >/dev/null <<SERVICE
             [Unit]
             Description=ChatApp Spring Boot service
@@ -237,6 +254,7 @@ jobs:
             WantedBy=multi-user.target
             SERVICE
 
+            log_step "starting application service"
             sudo systemctl daemon-reload
             sudo systemctl enable ${APP_NAME}
             if ! sudo systemctl restart ${APP_NAME}; then
@@ -251,7 +269,10 @@ jobs:
             fi
 
             echo "Application service restarted and is active."
+            log_step "checking local application health"
             bash "${APP_DIR}/check_app_health.sh" "http://localhost:${APP_PORT}/actuator/health"
 
+            log_step "configuring Nginx and HTTPS"
             DOMAIN_NAME="${DOMAIN_NAME}" CERTBOT_EMAIL="${CERTBOT_EMAIL}" APP_PORT="${APP_PORT}" bash "${APP_DIR}/setup_nginx.sh"
+            log_step "checking public HTTPS application health"
             bash "${APP_DIR}/check_app_health.sh" "https://${DOMAIN_NAME}/actuator/health"
