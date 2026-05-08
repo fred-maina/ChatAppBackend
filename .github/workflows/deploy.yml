@@ -113,19 +113,23 @@ jobs:
             env_file_has_value() {
               local file_path="$1"
               local key="$2"
+              local line
+              local value
 
-              sudo awk -F= -v key="${key}" '
-                $0 ~ "^[[:space:]]*(export[[:space:]]+)?" key "[[:space:]]*=" {
-                  sub(/^[^=]*=/, "")
-                  gsub(/^[[:space:]]+|[[:space:]]+$/, "")
-                  gsub(/^'\''|'\''$/, "")
-                  gsub(/^"|"$/, "")
-                  if (length($0) > 0) {
-                    found = 1
-                  }
-                }
-                END { exit found ? 0 : 1 }
-              ' "${file_path}"
+              line="$(sudo grep -E "^[[:space:]]*(export[[:space:]]+)?${key}[[:space:]]*=" "${file_path}" | tail -n 1 || true)"
+              if [[ -z "${line}" ]]; then
+                return 1
+              fi
+
+              value="${line#*=}"
+              value="${value#"${value%%[![:space:]]*}"}"
+              value="${value%"${value##*[![:space:]]}"}"
+              value="${value%\"}"
+              value="${value#\"}"
+              value="${value%\'}"
+              value="${value#\'}"
+
+              [[ -n "${value}" ]]
             }
 
             require_env_keys() {
