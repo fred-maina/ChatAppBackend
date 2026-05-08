@@ -169,6 +169,7 @@ jobs:
 
             log_step "configuring PostgreSQL"
             if [[ -n "${DB_HOST:-}" && -n "${DB_PORT:-}" && -n "${DB_NAME:-}" && -n "${DB_USERNAME:-}" && -n "${DB_PASSWORD:-}" ]]; then
+              echo "Using external PostgreSQL configuration from GitHub Secrets."
               sudo mkdir -p "${APP_CONFIG_DIR}"
               sudo tee "${APP_ENV_FILE}" >/dev/null <<DBENV
             DB_HOST=${DB_HOST}
@@ -181,20 +182,33 @@ jobs:
             SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
             DBENV
               sudo chmod 600 "${APP_ENV_FILE}"
-              echo "Using external PostgreSQL configuration from GitHub Secrets."
             else
-              env -u DB_PASSWORD \
+              echo "Using local PostgreSQL container."
+              echo "Checking local PostgreSQL setup script at ${APP_DIR}/setup_postgres.sh"
+              if ! test -x "${APP_DIR}/setup_postgres.sh"; then
+                echo "Local PostgreSQL setup script is missing or not executable: ${APP_DIR}/setup_postgres.sh"
+                echo "Deployment directory contents:"
+                ls -la "${APP_DIR}" | awk '{print $1, $3, $4, $9}'
+                exit 1
+              fi
+
+              if ! env -u DB_PASSWORD \
                 APP_CONFIG_DIR="${APP_CONFIG_DIR}" \
                 APP_ENV_FILE="${APP_ENV_FILE}" \
                 DB_HOST="127.0.0.1" \
                 DB_PORT="5432" \
                 DB_NAME="myapp" \
                 DB_USERNAME="myapp_user" \
-                bash "${APP_DIR}/setup_postgres.sh"
+                bash "${APP_DIR}/setup_postgres.sh"; then
+                  echo "Local PostgreSQL setup failed."
+                  echo "SSH into the server and run: bash ${APP_DIR}/setup_postgres.sh"
+                  exit 1
+              fi
             fi
 
             log_step "configuring Redis"
             if [[ -n "${REDIS_HOST:-}" && -n "${REDIS_PORT:-}" && -n "${REDIS_PASSWORD:-}" ]]; then
+              echo "Using external Redis configuration from GitHub Secrets."
               sudo mkdir -p "${APP_CONFIG_DIR}"
               sudo tee "${REDIS_ENV_FILE}" >/dev/null <<REDISENV
             REDIS_HOST=${REDIS_HOST}
@@ -202,14 +216,26 @@ jobs:
             REDIS_PASSWORD=${REDIS_PASSWORD}
             REDISENV
               sudo chmod 600 "${REDIS_ENV_FILE}"
-              echo "Using external Redis configuration from GitHub Secrets."
             else
-              env -u REDIS_PASSWORD \
+              echo "Using local Redis container."
+              echo "Checking local Redis setup script at ${APP_DIR}/setup_redis.sh"
+              if ! test -x "${APP_DIR}/setup_redis.sh"; then
+                echo "Local Redis setup script is missing or not executable: ${APP_DIR}/setup_redis.sh"
+                echo "Deployment directory contents:"
+                ls -la "${APP_DIR}" | awk '{print $1, $3, $4, $9}'
+                exit 1
+              fi
+
+              if ! env -u REDIS_PASSWORD \
                 APP_CONFIG_DIR="${APP_CONFIG_DIR}" \
                 REDIS_ENV_FILE="${REDIS_ENV_FILE}" \
                 REDIS_HOST="127.0.0.1" \
                 REDIS_PORT="6379" \
-                bash "${APP_DIR}/setup_redis.sh"
+                bash "${APP_DIR}/setup_redis.sh"; then
+                  echo "Local Redis setup failed."
+                  echo "SSH into the server and run: bash ${APP_DIR}/setup_redis.sh"
+                  exit 1
+              fi
             fi
 
             log_step "validating server app environment"
