@@ -130,9 +130,11 @@ public class MessagingService {
     }
 
     @Transactional
-    public void setMessageAsRead(String sessionId) {
-        log.info("Marking messages as read for session {}", sessionId);
-        chatMessageRepository.markMessagesAsRead(sessionId);
+    public void setMessageAsRead(String email, String sessionId) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found: " + email));
+        log.info("Marking messages as read for user {} from session {}", email, sessionId);
+        chatMessageRepository.markMessagesAsRead(user.getId(), sessionId);
     }
 
     // For RedisSubscriber to call

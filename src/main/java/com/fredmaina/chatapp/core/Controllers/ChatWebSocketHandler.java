@@ -101,8 +101,13 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                 }
             }
             case MARK_AS_READ -> {
-                messagingService.setMessageAsRead(payload.getChatId());
-                log.info(payload.toString());
+                String email = extractUsernameFromJWT(session);
+                if (email != null && payload.getChatId() != null) {
+                    messagingService.setMessageAsRead(email, payload.getChatId());
+                    log.info(payload.toString());
+                } else {
+                    log.warn("MARK_AS_READ failed: email={}, chatId={}", email, payload.getChatId());
+                }
             }
             default -> log.warn("Unsupported message type: {}", payload.getType());
         }

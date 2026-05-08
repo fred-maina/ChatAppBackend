@@ -72,14 +72,12 @@ public class ChatService {
         return sessions;
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public List<ChatMessageDto> getChatHistoryForAnonymous(String sessionId, String recipientUsername) {
         User recipient = userRepository.findByUsername(recipientUsername)
                 .orElseThrow(() -> new RuntimeException("Recipient user not found: " + recipientUsername));
 
         List<ChatMessage> messages = chatMessageRepository.findFullChatHistory(sessionId,recipient.getId());
-
-        chatMessageRepository.markMessagesAsRead(recipient.getId(), sessionId);
 
         return messages.stream()
                 .map(msg -> ChatMessageMapper.toDto(msg, recipient.getId()))
