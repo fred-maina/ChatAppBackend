@@ -188,6 +188,10 @@ The primary configuration is in `src/main/resources/application.properties`. Set
     ```
 The application typically starts on `http://localhost:8080`.
 
+## Production Deployment
+
+For Ubuntu EC2 deployment with Nginx, HTTPS, Certbot, and GitHub Actions, see [docs/deployment.md](docs/deployment.md).
+
 ---
 
 ## API Endpoints
@@ -246,4 +250,3 @@ Base Path: `/api`
 ## Database Migrations
 
 Managed by Flyway. Scripts are in `src/main/resources/db/migration`.
-
