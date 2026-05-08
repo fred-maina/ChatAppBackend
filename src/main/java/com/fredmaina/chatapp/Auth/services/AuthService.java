@@ -49,12 +49,12 @@ public class AuthService {
     @CacheEvict(value = "usernameCheck", key = "#request.username.toLowerCase()")
     public AuthResponse signUp(SignUpRequest request) {
         AuthResponse authResponse = new AuthResponse();
-        if (request.getUsername() != null && userRepository.findByUsernameIgnoreCase(request.getUsername()).isPresent()) {
-            authResponse.setMessage("Username already exists (case-insensitive)");
+        if (request.getUsername() != null && userRepository.existsByUsernameIgnoreCase(request.getUsername())) {
+            authResponse.setMessage("Username already exists");
             authResponse.setSuccess(false);
             return authResponse;
         }
-        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+        if (userRepository.existsByEmail(request.getEmail())) {
             authResponse.setMessage("Email already exists");
             authResponse.setSuccess(false);
             return authResponse;
@@ -80,14 +80,8 @@ public class AuthService {
             authResponse.setUser(user);
             authResponse.setToken(token);
         } catch (DataIntegrityViolationException e) {
-            if (e.getMessage().contains("users_email_key")) {
-                authResponse.setMessage("Email already exists");
-            } else if (e.getMessage().contains("idx_user_username") || e.getMessage().contains("users_username_key")) {
-                authResponse.setMessage("Username already exists");
-            } else {
-                log.error("Data integrity violation during sign up: {}", e.getMessage());
-                authResponse.setMessage("Data integrity violation");
-            }
+            log.error("Data integrity violation during sign up: {}", e.getMessage());
+            authResponse.setMessage("Data integrity violation");
             authResponse.setSuccess(false);
         } catch (Exception e) {
             log.error("Unexpected error during sign up: {}", e.getMessage(), e);
@@ -240,7 +234,6 @@ public class AuthService {
                         .message("Username set successfully")
                         .build();
             } catch (DataIntegrityViolationException e) {
-
                 log.error("Data integrity violation while setting username for email {}: {}", email, e.getMessage());
                 return AuthResponse.builder()
                         .message("Username already taken or another data issue occurred.")
