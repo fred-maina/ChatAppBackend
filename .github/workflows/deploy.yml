@@ -96,7 +96,7 @@ jobs:
           envs: APP_DIR,APP_NAME,APP_PORT,APP_CONFIG_DIR,APP_ENV_FILE,REDIS_ENV_FILE,DOMAIN_NAME,CERTBOT_EMAIL,DB_HOST,DB_PORT,DB_NAME,DB_USERNAME,DB_PASSWORD,REDIS_HOST,REDIS_PORT,REDIS_PASSWORD
           script_stop: true
           script: |
-            set -euo pipefail
+            set -Eeuo pipefail
             CURRENT_STEP="initializing deployment"
 
             log_step() {
@@ -104,7 +104,7 @@ jobs:
               echo "==> ${CURRENT_STEP}"
             }
 
-            trap 'echo "ERROR: deployment failed during: ${CURRENT_STEP}" >&2' ERR
+            trap 'echo "ERROR: deployment failed during: ${CURRENT_STEP} at line ${LINENO}" >&2' ERR
 
             log_step "preparing deployment directory"
             mkdir -p "${APP_DIR}"
@@ -168,7 +168,18 @@ jobs:
             fi
 
             log_step "configuring PostgreSQL"
-            if [[ -n "${DB_HOST:-}" && -n "${DB_PORT:-}" && -n "${DB_NAME:-}" && -n "${DB_USERNAME:-}" && -n "${DB_PASSWORD:-}" ]]; then
+            postgres_mode="local"
+            if [[ -n "${DB_HOST:-}" ]]; then
+              if [[ -n "${DB_PORT:-}" && -n "${DB_NAME:-}" && -n "${DB_USERNAME:-}" && -n "${DB_PASSWORD:-}" ]]; then
+                postgres_mode="external"
+              else
+                echo "Partial DB_* GitHub Secrets detected. Provide all DB_HOST, DB_PORT, DB_NAME, DB_USERNAME, DB_PASSWORD, or remove all DB_* secrets to use local PostgreSQL."
+                exit 1
+              fi
+            fi
+            echo "PostgreSQL mode: ${postgres_mode}"
+
+            if [[ "${postgres_mode}" == "external" ]]; then
               echo "Using external PostgreSQL configuration from GitHub Secrets."
               sudo mkdir -p "${APP_CONFIG_DIR}"
               sudo tee "${APP_ENV_FILE}" >/dev/null <<DBENV
@@ -207,7 +218,18 @@ jobs:
             fi
 
             log_step "configuring Redis"
-            if [[ -n "${REDIS_HOST:-}" && -n "${REDIS_PORT:-}" && -n "${REDIS_PASSWORD:-}" ]]; then
+            redis_mode="local"
+            if [[ -n "${REDIS_HOST:-}" ]]; then
+              if [[ -n "${REDIS_PORT:-}" && -n "${REDIS_PASSWORD:-}" ]]; then
+                redis_mode="external"
+              else
+                echo "Partial REDIS_* GitHub Secrets detected. Provide all REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, or remove all REDIS_* secrets to use local Redis."
+                exit 1
+              fi
+            fi
+            echo "Redis mode: ${redis_mode}"
+
+            if [[ "${redis_mode}" == "external" ]]; then
               echo "Using external Redis configuration from GitHub Secrets."
               sudo mkdir -p "${APP_CONFIG_DIR}"
               sudo tee "${REDIS_ENV_FILE}" >/dev/null <<REDISENV
