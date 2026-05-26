@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 public class ChatMessageDto {
     private String id;
     private String text;
-    private String senderType; // "anonymous" or "self"
+    private String senderType;
     private String timestamp;
     private String nickname;
 }

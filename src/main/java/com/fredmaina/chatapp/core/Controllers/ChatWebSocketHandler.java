@@ -64,7 +64,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                 for (String part : parts) {
                     String[] keyValue = part.trim().split("=");
                     if (keyValue.length == 2 && keyValue[0].equals("anonSessionId")) {
-                        log.info("extracted from cookies");
+                        log.debug("extracted from cookies");
                     }
                 }
             }
@@ -108,7 +108,6 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    // Helper to extract JWT from query params
     private String extractUsernameFromJWT(WebSocketSession session) {
         try {
             URI uri = session.getUri();
@@ -128,10 +127,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         return null;
     }
 
-    // Helper to extract session ID from cookies
     private String extractAnonSessionId(WebSocketSession session) {
         try {
-            // Try to get from cookies
             List<String> cookies = session.getHandshakeHeaders().get("cookie");
             if (cookies != null) {
                 for (String header : cookies) {
@@ -139,20 +136,19 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                     for (String part : parts) {
                         String[] keyValue = part.trim().split("=");
                         if (keyValue.length == 2 && keyValue[0].equals("anonSessionId")) {
-                            log.info("extracted form cookies");
+                            log.debug("extracted from cookies");
                             return keyValue[1];
                         }
                     }
                 }
             }
-            // Fallback: Try to get from URI query param
             URI uri = session.getUri();
             if (uri != null && uri.getQuery() != null) {
                 String[] queryParams = uri.getQuery().split("&");
                 for (String param : queryParams) {
                     String[] keyValue = param.split("=");
                     if (keyValue.length == 2 && keyValue[0].equals("anonSessionId")) {
-                        log.info("extracted from  URI");
+                        log.debug("extracted from URI");
                         return keyValue[1];
                     }
                 }

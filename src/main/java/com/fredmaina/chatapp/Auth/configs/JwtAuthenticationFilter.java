@@ -50,15 +50,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
             if (jwtService.isTokenValid(jwt)&& userDetails.isEnabled()) {
-                String action = jwtService.getClaimFromToken(jwt, "action");
-
-                if ("reset-password".equals(action)) {
-                    if (!request.getRequestURI().startsWith("/api/auth/reset-password")) {
-                        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                        response.getWriter().write("Invalid token for this operation");
-                        return;
-                    }
-                }
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                         userDetails, null, userDetails.getAuthorities());
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));

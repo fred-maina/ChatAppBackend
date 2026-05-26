@@ -13,14 +13,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal; // Not used in current methods, but good for future
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.*; // Added DeleteMapping
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID; // For UUID
+import java.util.UUID;
 
 @Slf4j
 @Controller
@@ -29,7 +29,7 @@ public class ChatController {
     @Autowired
     private ChatService chatService;
     @Autowired
-    private JWTService jwtService; // Corrected case from jWTService
+    private JWTService jwtService;
     @Autowired
     private UserRepository userRepository;
     @Autowired
@@ -63,7 +63,7 @@ public class ChatController {
     @GetMapping("/chat/session_history")
     public ResponseEntity<?> getAnonChatHistory(
             @RequestParam String sessionId,
-            @RequestParam String recipient // This is the username of the dashboard owner
+            @RequestParam String recipient
     ) {
         ;
         List<ChatMessageDto> messages = chatService.getChatHistoryForAnonymous(sessionId, recipient);
@@ -98,7 +98,6 @@ public class ChatController {
             chatService.deleteChatSession(user.getId(), anonSessionId);
             return ResponseEntity.ok(Map.of("success", true, "message", "Chat session deleted successfully."));
         } catch (RuntimeException e) {
-            // Log the exception e
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("success", false, "message", "Failed to delete chat session: " + e.getMessage()));
         }
     }
