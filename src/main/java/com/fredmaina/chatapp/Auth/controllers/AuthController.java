@@ -6,6 +6,7 @@ import com.fredmaina.chatapp.Auth.Models.User;
 import com.fredmaina.chatapp.Auth.Repositories.UserRepository;
 import com.fredmaina.chatapp.Auth.services.AuthService;
 import com.fredmaina.chatapp.Auth.services.JWTService;
+import com.fredmaina.chatapp.Auth.services.WebSocketTicketService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +28,8 @@ public class AuthController {
     JWTService jwtService;
     @Autowired
     UserRepository userRepository;
+    @Autowired
+    WebSocketTicketService webSocketTicketService;
 
 
     @PostMapping("/login")
@@ -127,5 +130,57 @@ public class AuthController {
                     "message", "Error checking username"
             ));
         }
+    }
+
+    /**
+     * Generates a one-time-use WebSocket connection ticket.
+     * This endpoint requires authentication via Authorization header.
+     * The ticket is valid for 30 seconds and can only be used once.
+     */
+    @PostMapping("/ws-ticket")
+    public ResponseEntity<WebSocketTicketResponse> generateWebSocketTicket(
+            @RequestHeader("Authorization") String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(WebSocketTicketResponse.builder()
+                            .success(false)
+                            .message("Missing or invalid Authorization header")
+                            .build());
+        }
+
+        String token = authHeader.replace("Bearer ", "");
+        String email;
+        try {
+            email = jwtService.getUsernameFromToken(token);
+            if (!jwtService.isTokenValid(token)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(WebSocketTicketResponse.builder()
+                                .success(false)
+                                .message("Invalid or expired token")
+                                .build());
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(WebSocketTicketResponse.builder()
+                            .success(false)
+                            .message("Invalid token")
+                            .build());
+        }
+
+        User user = userRepository.findByEmail(email).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(WebSocketTicketResponse.builder()
+                            .success(false)
+                            .message("User not found")
+                            .build());
+        }
+
+        String ticket = webSocketTicketService.generateTicket(email);
+        return ResponseEntity.ok(WebSocketTicketResponse.builder()
+                .success(true)
+                .message("WebSocket ticket generated successfully")
+                .ticket(ticket)
+                .build());
     }
 }

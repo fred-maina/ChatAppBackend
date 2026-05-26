@@ -205,6 +205,7 @@ Base Path: `/api/auth`
 * `GET /me`: Current authenticated user details. (Requires `Authorization: Bearer <JWT_TOKEN>`)
 * `POST /set-username`: Set username (e.g., after Google OAuth).
 * `GET /check-username/{username}`: Check username availability.
+* `POST /ws-ticket`: Generate a one-time-use WebSocket connection ticket. (Requires `Authorization: Bearer <JWT_TOKEN>`)
 
 ### Chat
 Base Path: `/api`
@@ -216,7 +217,7 @@ Base Path: `/api`
 ### WebSocket
 * **Endpoint:** `/ws/chat`
 * **Connection:**
-    * **Authenticated Users:** `ws://localhost:8080/ws/chat?token=<YOUR_JWT_TOKEN>`
+    * **Authenticated Users:** Use a one-time ticket (see secure connection flow below)
     * **Anonymous Users:** Connect with `anonSessionId` in a cookie.
 * **Message Payload:** `WebSocketMessagePayload` JSON
     ```json
@@ -230,18 +231,47 @@ Base Path: `/api`
     }
     ```
 
+#### Secure WebSocket Connection Flow (Authenticated Users)
+
+For enhanced security, authenticated users should follow this two-step process:
+
+1. **Get a One-Time Ticket:**
+   ```http
+   POST /api/auth/ws-ticket
+   Authorization: Bearer <YOUR_JWT_TOKEN>
+   ```
+   Response:
+   ```json
+   {
+     "success": true,
+     "message": "WebSocket ticket generated successfully",
+     "ticket": "550e8400-e29b-41d4-a716-446655440000"
+   }
+   ```
+
+2. **Connect to WebSocket:**
+   ```
+   ws://localhost:8080/ws/chat?ticket=<TICKET>
+   ```
+
+**Important Notes:**
+- Tickets are valid for **30 seconds** only
+- Tickets can only be used **once** (immediately invalidated upon use)
+- This prevents the security risks of passing long-lived JWTs in URLs (logging, browser history, etc.)
+
 ---
 
 ## Usage
 
 1.  **Anonymous User:**
     * Frontend generates a unique `anonSessionId`.
-    * Connect to `/ws/chat` with `anonSessionId` (e.g., via cookie).
+    * Connect to `/ws/chat` with `anonSessionId` in a cookie.
     * Send messages with `type: "ANON_TO_USER"`.
 
 2.  **Registered User:**
     * Register/Login to get a JWT.
-    * Connect to `/ws/chat?token=<JWT>`.
+    * Request a WebSocket ticket via `POST /api/auth/ws-ticket` with your JWT.
+    * Connect to `/ws/chat?ticket=<TICKET>` (use ticket within 30 seconds).
     * Fetch sessions via `GET /api/chats`.
     * Reply via WebSocket with `type: "USER_TO_ANON"`.
     * View history/mark read via `GET /api/chat/session_history`.
