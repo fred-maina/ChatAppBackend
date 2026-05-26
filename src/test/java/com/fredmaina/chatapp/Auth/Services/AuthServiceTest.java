@@ -11,7 +11,6 @@ import com.fredmaina.chatapp.Auth.services.JWTService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
@@ -68,14 +67,13 @@ class AuthServiceTest {
         request.setPassword("mypassword");
         request.setEmail("fred@example.com");
 
-        when(passwordEncoder.encode(anyString())).thenReturn("encodedPassword");
-        when(userRepository.save(any(User.class))).thenThrow(
-                new DataIntegrityViolationException("users_email_key"));
+        when(userRepository.existsByEmail("fred@example.com")).thenReturn(true);
 
         AuthResponse response = authService.signUp(request);
 
         assertFalse(response.isSuccess());
         assertEquals("Email already exists", response.getMessage());
+        verify(userRepository, never()).save(any(User.class));
     }
 
     @Test
@@ -85,14 +83,13 @@ class AuthServiceTest {
         request.setPassword("mypassword");
         request.setEmail("fred@example.com");
 
-        when(passwordEncoder.encode(anyString())).thenReturn("encodedPassword");
-        when(userRepository.save(any(User.class))).thenThrow(
-                new DataIntegrityViolationException("users_username_key"));
+        when(userRepository.existsByUsernameIgnoreCase("fredmaina123")).thenReturn(true);
 
         AuthResponse response = authService.signUp(request);
 
         assertFalse(response.isSuccess());
         assertEquals("Username already exists", response.getMessage());
+        verify(userRepository, never()).save(any(User.class));
     }
 
     @Test
