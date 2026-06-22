@@ -13,7 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal; // Not used in current methods, but good for future
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*; // Added DeleteMapping
 
@@ -101,5 +101,35 @@ public class ChatController {
             // Log the exception e
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("success", false, "message", "Failed to delete chat session: " + e.getMessage()));
         }
+    }
+
+    @PostMapping("/chat/{anonSessionId}/read")
+    public ResponseEntity<?> markChatSessionAsRead(
+            @PathVariable String anonSessionId,
+            Authentication authentication) {
+
+        if (authentication == null || authentication.getName() == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
+                    "success", false,
+                    "message", "Authentication is required"
+            ));
+        }
+
+        Optional<User> userOptional = userRepository.findByEmail(authentication.getName());
+        if (userOptional.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                    "success", false,
+                    "message", "User not found"
+            ));
+        }
+
+        int updatedCount = chatService.markChatSessionAsRead(userOptional.get().getId(), anonSessionId);
+
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Chat session marked as read.",
+                "chatId", anonSessionId,
+                "markedReadCount", updatedCount
+        ));
     }
 }

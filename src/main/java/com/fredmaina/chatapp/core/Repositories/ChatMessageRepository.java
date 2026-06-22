@@ -54,12 +54,7 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, UUID> 
     @Modifying
     @Query("UPDATE ChatMessage m SET m.isRead = true " +
             "WHERE m.toUser.id = :userId AND m.fromSessionId = :fromSessionId AND m.isRead = false")
-    void markMessagesAsRead(@Param("userId") UUID userId, @Param("fromSessionId") String fromSessionId);
-
-    @Modifying
-    @Query("UPDATE ChatMessage m SET m.isRead =true " +
-    "WHERE m.fromSessionId=:sessionId AND m.isRead=false")
-    void markMessagesAsRead(String sessionId);
+    int markMessagesAsRead(@Param("userId") UUID userId, @Param("fromSessionId") String fromSessionId);
 
     void deleteByFromSessionIdAndToUserId(String fromSessionId, UUID toUserId);
 
