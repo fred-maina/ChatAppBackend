@@ -63,6 +63,18 @@ public class AuthController {
         }
     }
 
+    @PostMapping("/oauth/google/mobile")
+    public ResponseEntity<?> googleMobileOAuth(@RequestBody GoogleMobileOAuthRequest request) {
+        AuthResponse response = authService.handleGoogleMobileOAuth(request.getIdToken());
+        if (response.isSuccess()) {
+            log.info("Mobile Google OAuth successful for user: {}", response.getUser() != null ? response.getUser().getEmail() : "Unknown");
+            return ResponseEntity.ok(response);
+        } else {
+            log.warn("Mobile Google OAuth failed: {}", response.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+        }
+    }
+
     @GetMapping("/me")
     public ResponseEntity<AuthResponse> me(@RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");

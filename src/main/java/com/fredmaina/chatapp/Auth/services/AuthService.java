@@ -218,6 +218,64 @@ public class AuthService {
         }
     }
 
+    public AuthResponse handleGoogleMobileOAuth(String idToken) {
+        try {
+            if (idToken == null || idToken.isBlank()) {
+                return new AuthResponse(false, "OAuth failed: Missing id_token", null, null);
+            }
+
+            // You already use this endpoint in your current flow
+            String tokenInfoUrl = "https://oauth2.googleapis.com/tokeninfo?id_token=" + idToken;
+            log.info("Validating mobile id_token via: {}", tokenInfoUrl);
+
+            ResponseEntity<Map> tokenInfo = restTemplate.getForEntity(tokenInfoUrl, Map.class);
+
+            if (tokenInfo.getStatusCode() != HttpStatus.OK || tokenInfo.getBody() == null) {
+                log.error("Mobile Token info validation failed");
+                return new AuthResponse(false, "OAuth failed: Invalid token info", null, null);
+            }
+
+            Map body = tokenInfo.getBody();
+            
+            // SECURITY CHECK: Ensure the "aud" (audience) matches your Google Client ID
+            String audience = (String) body.get("aud");
+            if (!googleOAuthProperties.getClientId().equals(audience)) {
+                return new AuthResponse(false, "OAuth failed: Invalid token audience", null, null);
+            }
+
+            String email = (String) body.get("email");
+            String firstName = (String) body.get("given_name");
+            String lastName = (String) body.get("family_name");
+
+            Optional<User> existingUser = userRepository.findByEmail(email);
+            User user = existingUser.orElseGet(() -> {
+                User newUser = new User();
+                newUser.setEmail(email);
+                newUser.setFirstName(firstName);
+                newUser.setLastName(lastName);
+                newUser.setVerified(true);
+                newUser.setRole(Role.USER);
+                return userRepository.save(newUser);
+            });
+
+            String token = jwtService.generateToken(user.getEmail());
+
+            return AuthResponse.builder()
+                    .success(true)
+                    .message("Mobile OAuth login successful")
+                    .token(token)
+                    .user(user)
+                    .build();
+
+        } catch (Exception e) {
+            log.error("Mobile OAuth failed: {}", e.getMessage(), e);
+            return AuthResponse.builder()
+                    .success(false)
+                    .message("Mobile OAuth failed: " + e.getMessage())
+                    .build();
+        }
+    }
+
     @CacheEvict(value = "usernameCheck", key = "#username.toLowerCase()")
     public AuthResponse setUsername(String email, String username) {
         Optional<User> userByUsername = userRepository.findByUsernameIgnoreCase(username);
