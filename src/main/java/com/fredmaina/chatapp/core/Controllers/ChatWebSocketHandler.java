@@ -4,7 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fredmaina.chatapp.Auth.Models.User;
 import com.fredmaina.chatapp.Auth.Repositories.UserRepository;
 import com.fredmaina.chatapp.Auth.services.JWTService;
+import com.fredmaina.chatapp.core.DTOs.MessageType;
 import com.fredmaina.chatapp.core.DTOs.WebSocketMessagePayload;
+import com.fredmaina.chatapp.core.Services.MessageBlockedException;
 import com.fredmaina.chatapp.core.Services.MessagingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -90,7 +92,15 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                 String anonId = extractAnonSessionId(session);
                 if (anonId != null) {
                     log.info(payload.toString());
-                    messagingService.sendMessageFromAnonymous(anonId, payload);
+                    try {
+                        messagingService.sendMessageFromAnonymous(anonId, payload);
+                    } catch (MessageBlockedException e) {
+                        log.warn("Blocked message from anonymous session {}", anonId);
+                        session.sendMessage(new TextMessage(objectMapper.writeValueAsString(Map.of(
+                                "success", false,
+                                "message", e.getMessage()
+                        ))));
+                    }
                 }
             }
             case USER_TO_ANON -> {
@@ -101,8 +111,23 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                 }
             }
             case MARK_AS_READ -> {
-                messagingService.setMessageAsRead(payload.getChatId());
-                log.info(payload.toString());
+                String email = extractUsernameFromJWT(session);
+                if (email == null) {
+                    session.sendMessage(new TextMessage(objectMapper.writeValueAsString(Map.of(
+                            "success", false,
+                            "message", "Authentication is required to mark messages as read"
+                    ))));
+                    return;
+                }
+
+                int updatedCount = messagingService.setMessageAsRead(email, payload.getChatId());
+                session.sendMessage(new TextMessage(objectMapper.writeValueAsString(Map.of(
+                        "success", true,
+                        "type", MessageType.MARK_AS_READ.name(),
+                        "chatId", payload.getChatId(),
+                        "markedReadCount", updatedCount
+                ))));
+                log.info("Marked chat as read: {}", payload);
             }
             default -> log.warn("Unsupported message type: {}", payload.getType());
         }

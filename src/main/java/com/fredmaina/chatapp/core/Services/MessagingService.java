@@ -5,6 +5,7 @@ import com.fredmaina.chatapp.Auth.Models.User;
 import com.fredmaina.chatapp.Auth.Repositories.UserRepository;
 import com.fredmaina.chatapp.core.DTOs.MessageType;
 import com.fredmaina.chatapp.core.DTOs.WebSocketMessagePayload;
+import com.fredmaina.chatapp.core.Repositories.BlockedSessionRepository;
 import com.fredmaina.chatapp.core.Repositories.ChatMessageRepository;
 import com.fredmaina.chatapp.core.models.ChatMessage;
 import jakarta.transaction.Transactional;
@@ -40,6 +41,12 @@ public class MessagingService {
     private ChatMessageRepository chatMessageRepository;
 
     @Autowired
+    private ChatService chatService;
+
+    @Autowired
+    private BlockedSessionRepository blockedSessionRepository;
+
+    @Autowired
     private ObjectMapper objectMapper;
 
     @Autowired
@@ -56,6 +63,11 @@ public class MessagingService {
 
         User toUser = userRepository.findByUsername(dto.getTo())
                 .orElseThrow(() -> new IllegalArgumentException("Recipient user not found"));
+
+        if (blockedSessionRepository.existsByUserIdAndBlockedSessionId(toUser.getId(), sessionId)) {
+            log.warn("Blocked anonymous message dropped: sessionId={} targetUserId={}", sessionId, toUser.getId());
+            throw new MessageBlockedException("You have been blocked by this user.");
+        }
 
         ChatMessage message = ChatMessage.builder()
                 .content(dto.getContent())
@@ -130,9 +142,15 @@ public class MessagingService {
     }
 
     @Transactional
-    public void setMessageAsRead(String sessionId) {
-        log.info("Marking messages as read for session {}", sessionId);
-        chatMessageRepository.markMessagesAsRead(sessionId);
+    public int setMessageAsRead(String userEmail, String sessionId) {
+        if (sessionId == null || sessionId.isBlank()) {
+            throw new IllegalArgumentException("chatId is required for MARK_AS_READ");
+        }
+
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        return chatService.markChatSessionAsRead(user.getId(), sessionId);
     }
 
     // For RedisSubscriber to call

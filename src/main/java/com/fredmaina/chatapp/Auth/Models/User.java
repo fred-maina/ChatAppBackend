@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.Instant;
 import java.util.UUID;
 
 @Entity
@@ -38,4 +39,6 @@ public class User {
     private Role role;
 
     private boolean verified;
+
+    private Instant eulaAcceptedAt;
 }

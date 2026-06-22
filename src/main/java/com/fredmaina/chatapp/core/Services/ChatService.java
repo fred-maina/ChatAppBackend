@@ -9,6 +9,8 @@ import com.fredmaina.chatapp.core.Repositories.ChatMessageRepository;
 import com.fredmaina.chatapp.core.models.ChatMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +28,8 @@ public class ChatService {
     ChatMessageRepository chatMessageRepository;
     @Autowired
     UserRepository userRepository;
+    @Autowired
+    CacheManager cacheManager;
 
     @Cacheable(value = "chatSessions", key = "#userId")
     @Transactional(readOnly = true)
@@ -79,11 +83,20 @@ public class ChatService {
 
         List<ChatMessage> messages = chatMessageRepository.findFullChatHistory(sessionId,recipient.getId());
 
-        chatMessageRepository.markMessagesAsRead(recipient.getId(), sessionId);
-
         return messages.stream()
                 .map(msg -> ChatMessageMapper.toDto(msg, recipient.getId()))
                 .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public int markChatSessionAsRead(UUID userId, String anonSessionId) {
+        userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found for mark-as-read: " + userId));
+
+        int updatedCount = chatMessageRepository.markMessagesAsRead(userId, anonSessionId);
+        evictChatSessions(userId);
+        log.info("Marked {} messages as read for userId={} sessionId={}", updatedCount, userId, anonSessionId);
+        return updatedCount;
     }
 
 
@@ -94,5 +107,17 @@ public class ChatService {
 
         chatMessageRepository.deleteByFromSessionIdAndToUserId(anonSessionId, userId);
         chatMessageRepository.deleteByToSessionIdAndFromUserId(anonSessionId, userId);
+        evictChatSessions(userId);
+    }
+
+    private void evictChatSessions(UUID userId) {
+        try {
+            Cache cache = cacheManager.getCache("chatSessions");
+            if (cache != null) {
+                cache.evict(userId);
+            }
+        } catch (Exception e) {
+            log.error("Cache eviction failed for userId={}", userId, e);
+        }
     }
 }

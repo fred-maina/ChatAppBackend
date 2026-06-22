@@ -211,6 +211,7 @@ Base Path: `/api`
 
 * `GET /chats`: Authenticated user's chat sessions. (Requires `Authorization: Bearer <JWT_TOKEN>`)
 * `GET /chat/session_history`: Chat history for an anonymous session. (Query Params: `sessionId`, `recipient`)
+* `POST /chat/{anonSessionId}/read`: Mark inbound messages from an anonymous session as read for the authenticated user. (Requires `Authorization: Bearer <JWT_TOKEN>`)
 * `DELETE /chat/{anonSessionId}`: Delete a chat session. (Requires `Authorization: Bearer <JWT_TOKEN>`)
 
 ### WebSocket
@@ -226,7 +227,8 @@ Base Path: `/api`
       "to": "username_or_sessionId",
       "content": "Your message content",
       "nickname": "AnonymousUserNickname", // Optional
-      "timestamp": "ISO_DATE_TIME_STRING"
+      "timestamp": "ISO_DATE_TIME_STRING",
+      "chatId": "anonymous_session_id_for_MARK_AS_READ"
     }
     ```
 
@@ -244,7 +246,8 @@ Base Path: `/api`
     * Connect to `/ws/chat?token=<JWT>`.
     * Fetch sessions via `GET /api/chats`.
     * Reply via WebSocket with `type: "USER_TO_ANON"`.
-    * View history/mark read via `GET /api/chat/session_history`.
+    * View history via `GET /api/chat/session_history`.
+    * Mark inbound messages as read via `POST /api/chat/{anonSessionId}/read` or a WebSocket `MARK_AS_READ` payload with `chatId`.
 
 
 ## Database Migrations

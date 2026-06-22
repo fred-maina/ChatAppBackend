@@ -1,13 +1,11 @@
 package com.fredmaina.chatapp.core.DTOs;
 
 
-import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
-
-import java.time.LocalDateTime;
 
 
 @Data
@@ -21,7 +19,8 @@ public class WebSocketMessagePayload {
     private String content;
     private String nickname;
     private String timestamp;
-    private String ChatId;
+    @JsonAlias({"ChatId", "chatId"})
+    private String chatId;
 
 
     public WebSocketMessagePayload(MessageType type, String from, String to, String content, String nickname, String timestamp) {

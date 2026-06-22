@@ -106,7 +106,8 @@ class AuthServiceTest {
         user.setPassword("encodedPassword");
         user.setEmail("fred@example.com");
 
-        when(userRepository.findByUsername("fredmaina123")).thenReturn(Optional.of(user));
+        when(userRepository.findByEmail("fredmaina123")).thenReturn(Optional.empty());
+        when(userRepository.findByUsernameIgnoreCase("fredmaina123")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("mypassword", "encodedPassword")).thenReturn(true);
         when(jwtService.generateToken(user.getEmail())).thenReturn("jwt-token");
 
@@ -126,6 +127,7 @@ class AuthServiceTest {
 
         when(userRepository.findByUsername("wronguser")).thenReturn(Optional.empty());
         when(userRepository.findByEmail("wronguser")).thenReturn(Optional.empty());
+        when(userRepository.findByUsernameIgnoreCase("wronguser")).thenReturn(Optional.empty());
 
         AuthResponse response = authService.login(loginRequest);
 
