@@ -225,9 +225,10 @@ public class AuthService {
             }
 
             // You already use this endpoint in your current flow
-            String tokenInfoUrl = "https://oauth2.googleapis.com/tokeninfo?id_token=" + java.net.URLEncoder.encode(idToken, java.nio.charset.StandardCharsets.UTF_8.toString());
+            String tokenInfoUrl = "https://oauth2.googleapis.com/tokeninfo?id_token=" + java.net.URLEncoder.encode(idToken, java.nio.charset.StandardCharsets.UTF_8);
             log.info("Validating mobile id_token via: {}", tokenInfoUrl);
 
+            @SuppressWarnings("rawtypes")
             ResponseEntity<Map> tokenInfo = restTemplate.getForEntity(tokenInfoUrl, Map.class);
 
             if (tokenInfo.getStatusCode() != HttpStatus.OK || tokenInfo.getBody() == null) {
@@ -240,7 +241,7 @@ public class AuthService {
             
             // SECURITY CHECK: Ensure the "aud" (audience) matches your Google Client ID
             String audience = (String) body.get("aud");
-            if (!googleOAuthProperties.getClientId().equals(audience)) {
+            if (audience == null || !googleOAuthProperties.getClientId().equals(audience)) {
                 return new AuthResponse(false, "OAuth failed: Invalid token audience", null, null);
             }
 
