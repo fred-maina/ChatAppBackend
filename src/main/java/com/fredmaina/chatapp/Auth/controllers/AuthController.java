@@ -64,7 +64,7 @@ public class AuthController {
     }
 
     @PostMapping("/oauth/google/mobile")
-    public ResponseEntity<?> googleMobileOAuth(@RequestBody GoogleMobileOAuthRequest request) {
+    public ResponseEntity<?> googleMobileOAuth(@Valid @RequestBody GoogleMobileOAuthRequest request) {
         AuthResponse response = authService.handleGoogleMobileOAuth(request.getIdToken());
         if (response.isSuccess()) {
             log.info("Mobile Google OAuth successful for user: {}", response.getUser() != null ? response.getUser().getEmail() : "Unknown");
